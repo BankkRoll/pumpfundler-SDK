@@ -91,19 +91,33 @@ async function createAndBuyWithLocalWallets() {
 createAndBuyWithLocalWallets().catch(console.error);
 ```
 
-## Key Features
+---
 
-- Token creation and bundling management
-- Buying and selling tokens
-- Bonding curve mechanics
-- Automated Market Maker (AMM) functionality
-- Event handling
-- Jito integration for MEV protection
-- Comprehensive utility functions
+## Key Features  
+
+- **Token Creation & Management** – Easily create, deploy, and manage tokens on Solana.  
+- **Trading Operations** – Execute buy and sell orders with built-in slippage protection.  
+- **Transaction Bundling** – Efficiently bundle multiple transactions for atomic execution.  
+- **MEV Protection** – Integrate with Jito for enhanced MEV protection.  
+
+## Core Components  
+
+- **PumpFundlerSDK** – Main class for interacting with PumpFun.  
+- **Token Operations** – Methods for creating, buying, and selling tokens.  
+- **AMM (Automated Market Maker)** – Handles swaps and price calculations.  
+- **Event Handling** – Subscribe to protocol events.  
+- **Jito Integration** – Ensures MEV protection and optimized transactions.  
+
+## Fees  
+
+| Fee Type         | Cost                  |
+|-----------------|----------------------|
+| **Creation Fee**  | `0.01 SOL` per token |
+| **Transaction Fee** | `1%` of the transaction amount |
 
 ## Documentation
 
-For detailed documentation, please refer to the `/docs` directory or visit our [official documentation site](https://pumpfundler.mintlify.app/).
+For detailed documentation, please refer to the `/docs` directory or visit the [documentation site](https://pumpfundler.mintlify.app/).
 
 ## License
 
