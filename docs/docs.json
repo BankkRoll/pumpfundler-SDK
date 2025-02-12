@@ -7,7 +7,7 @@
     "light": "#55D799",
     "dark": "#0D9373"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/pumpfun.png",
   "navigation": {
     "tabs": [
       {
@@ -57,9 +57,8 @@
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg",
-    "href": "https://pumpfun.com"
+    "light": "/pumpfun.png",
+    "dark": "/pumpfun.png"
   },
   "navbar": {
     "primary": {
