@@ -1,24 +1,26 @@
 ---
 title: "Introduction"
-description: "Get started with the Pumpfundler SDK for Solana blockchain development"
+description: "Get started with the PumpFundler SDK for Solana blockchain development"
 ---
 
-# Introduction to Pumpfundler SDK
+# PumpFundler SDK
 
-Welcome to the Pumpfundler SDK documentation! This powerful TypeScript library is designed to simplify your interaction with the PumpFun protocol and bundles on the Solana blockchain. Whether you're creating tokens, managing bonding curves, or integrating advanced features like MEV protection, Pumpfundler SDK has got you covered.
+<Note>
+  **Warning: Use at Your Own Risk**
 
-## What is Pumpfundler?
+  This software is provided "as is", without warranty of any kind, express or implied. The authors or copyright holders shall not be liable for any claim, damages or other liability. By using this software, you acknowledge and agree that you are solely responsible for any consequences resulting from its use.
+</Note>
 
-Pumpfundler is a revolutionary protocol on the Solana blockchain that enables the creation and management of tokens with customizable bonding curves, as well as efficient bundling of transactions. It provides a suite of tools for developers to build innovative DeFi applications with ease.
+PumpFundler SDK is a powerful TypeScript library designed for seamless interaction with the PumpFun protocol on the Solana blockchain. It offers comprehensive functionality for token creation, trading, and advanced features like MEV protection through Jito integration.
 
 ## Key Features
 
 <CardGroup cols={2}>
-  <Card title="Token Creation" icon="coins">
-    Easily create and deploy new tokens on the Solana blockchain.
+  <Card title="Token Creation and Management" icon="coins">
+    Easily create, deploy, and manage tokens on the Solana blockchain.
   </Card>
-  <Card title="Bonding Curve Management" icon="chart-line">
-    Implement and manage sophisticated bonding curve mechanisms for your tokens.
+  <Card title="Trading Operations" icon="chart-line">
+    Execute buy and sell orders with built-in slippage protection.
   </Card>
   <Card title="Transaction Bundling" icon="layer-group">
     Efficiently bundle multiple transactions for atomic execution.
@@ -28,61 +30,31 @@ Pumpfundler is a revolutionary protocol on the Solana blockchain that enables th
   </Card>
 </CardGroup>
 
-## Getting Started
+## Core Components
 
-To begin using the Pumpfundler SDK, follow these steps:
+The PumpFundler SDK consists of several core components:
 
-<Steps>
-  <Step title="Install the SDK">
-    Run the following command in your project directory:
-    ```bash
-    npm install pumpfundler-sdk
-    ```
-  </Step>
-  <Step title="Configure your environment">
-    Set up your Solana connection and wallet:
-    ```typescript
-    import { Connection, Keypair } from "@solana/web3.js";
-    import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-
-    const connection = new Connection("https://api.mainnet-beta.solana.com");
-    const wallet = new Wallet(Keypair.generate());
-    ```
-  </Step>
-  <Step title="Initialize the SDK">
-    Create a PumpfundlerSDK instance:
-    ```typescript
-    import { PumpfundlerSDK, PumpfundlerConfig } from "pumpfundler-sdk";
-
-    const config: PumpfundlerConfig = {
-      connection,
-      jitoFee: 1000000, // 0.001 SOL
-      commitmentLevel: "confirmed",
-      blockEngineUrl: "https://your-jito-block-engine-url.com",
-      jitoAuthKeypair: "your-jito-auth-keypair-base58",
-    };
-
-    const provider = new AnchorProvider(connection, wallet, {});
-    const sdk = new PumpfundlerSDK(provider, config);
-    ```
-  </Step>
-</Steps>
+- **PumpFundlerSDK**: The main class for interacting with the PumpFun protocol.
+- **Token Operations**: Methods for creating, buying, and selling tokens.
+- **AMM (Automated Market Maker)**: Implements logic for token swaps and price calculations.
+- **Event Handling**: Subscribe to various protocol events.
+- **Jito Integration**: MEV protection and efficient transaction processing.
 
 ## Next Steps
 
-Now that you have an overview of the Pumpfundler SDK, explore the following sections to dive deeper:
+Explore the following sections to dive deeper into the PumpFundler SDK:
 
 <CardGroup cols={2}>
   <Card title="Installation" icon="download" href="/installation">
     Learn how to install the Pumpfundler SDK in your project.
   </Card>
   <Card title="Configuration" icon="gear" href="/configuration">
-    Understand the configuration options available for the SDK.
+    Learn how to set up and customize the Pumpfundler SDK for your needs.
+  </Card>
+  <Card title="Examples" icon="code" href="/examples">
+    Explore practical code samples and best practices for integration.
   </Card>
   <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
     Dive into the fundamental concepts of the Pumpfundler SDK.
-  </Card>
-  <Card title="Token Operations" icon="coins" href="/token-operations/creation">
-    Explore token creation and management features.
   </Card>
 </CardGroup>

@@ -15,7 +15,12 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": ["introduction", "installation", "configuration"]
+            "pages": [
+              "introduction",
+              "installation",
+              "configuration",
+              "examples"
+            ]
           },
           {
             "group": "Core Concepts",

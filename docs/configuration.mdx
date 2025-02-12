@@ -90,17 +90,6 @@ If you're using a custom RPC endpoint, you can specify it when creating the `Con
 const connection = new Connection("https://your-custom-rpc-endpoint.com");
 ```
 
-### Wallet Configuration
-
-The example uses a generated keypair for demonstration. In a real application, you'd typically use a wallet adapter:
-
-```typescript
-import { useWallet } from '@solana/wallet-adapter-react';
-
-// Inside your component
-const wallet = useWallet();
-```
-
 ### Provider Options
 
 You can pass additional options to the `AnchorProvider`:
@@ -137,7 +126,10 @@ const config: PumpfundlerConfig = {
 
 Now that you've configured Pumpfundler SDK, you're ready to start using its features:
 
-<CardGroup cols={1}>
+<CardGroup cols={2}>
+  <Card title="Examples" icon="code" href="/examples">
+    Explore practical code samples and best practices for integration.
+  </Card>
   <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
     Understand the fundamental concepts of the Pumpfundler SDK.
   </Card>

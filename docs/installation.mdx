@@ -1,94 +1,245 @@
 ---
 title: "Installation"
-description: "Learn how to install and set up Pumpfundler SDK in your project"
+description: "Learn how to install, set up, and use Pumpfundler SDK in your Node.js and React projects"
 ---
 
-# Installing Pumpfundler SDK
+# Installing and Using Pumpfundler SDK
 
-This guide will walk you through the process of installing Pumpfundler SDK in your project. The SDK is available as an npm package, making it easy to integrate into your TypeScript or JavaScript projects.
+This guide will walk you through the process of installing Pumpfundler SDK and setting up advanced examples in both Node.js and React environments.
 
 ## Prerequisites
 
 Before you begin, make sure you have the following installed:
 
 <Check>Node.js (version 14 or later)</Check>
-<Check>npm (usually comes with Node.js)</Check>
+<Check>npm (version 6 or later)</Check>
 
 ## Installation Steps
 
 <Steps>
-  <Step title="Open your terminal">
-    Navigate to your project directory.
-  </Step>
-  <Step title="Install Pumpfundler SDK">
-    Run the following command to install Pumpfundler SDK:
+  <Step title="Create a new project directory">
     ```bash
-    npm install pumpfundler-sdk
+    mkdir pumpfundler-project
+    cd pumpfundler-project
     ```
-    This command will download and install the latest version of Pumpfundler SDK and its dependencies.
   </Step>
-  <Step title="Import the SDK">
-    Once the installation is complete, you can import the SDK in your TypeScript or JavaScript files:
+  <Step title="Initialize a new Node.js project">
+    ```bash
+    npm init -y
+    ```
+  </Step>
+  <Step title="Install Pumpfundler SDK and dependencies">
+    ```bash
+    npm install pumpfundler-sdk @solana/web3.js @coral-xyz/anchor
+    ```
+  </Step>
+  <Step title="Configure your environment">
+    Set up your Solana connection and wallet using a local private key:
     ```typescript
-    import { PumpfundlerSDK } from 'pumpfundler-sdk';
+    import { Connection, Keypair } from "@solana/web3.js";
+    import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+
+    // Use your actual private key here
+    const privateKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const keypair = Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'));
+
+    const connection = new Connection("https://api.mainnet-beta.solana.com");
+    const wallet = new Wallet(keypair);
+    ```
+  </Step>
+  <Step title="Initialize the SDK">
+    Create a PumpFundlerSDK instance:
+    ```typescript
+    import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
+
+    // Use your actual Jito auth private key here
+    const jitoAuthPrivateKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+    const config: PumpFundlerConfig = {
+      connection,
+      jitoFee: 1000000, // 0.001 SOL
+      commitmentLevel: "confirmed",
+      blockEngineUrl: "https://your-jito-block-engine-url.com",
+      jitoAuthKeypair: Keypair.fromSecretKey(Buffer.from(jitoAuthPrivateKey, 'hex')),
+    };
+
+    const provider = new AnchorProvider(connection, wallet, {});
+    const sdk = new PumpFundlerSDK(provider, config);
+    ```
+  </Step>
+  <Step title="Create and Buy with Multiple Wallets">
+    Use createAndBuy with multiple local wallets:
+    ```typescript
+    import { Keypair, PublicKey } from "@solana/web3.js";
+    import { Wallet } from "@coral-xyz/anchor";
+    import { CreateTokenMetadata } from "pumpfundler-sdk";
+
+    // Use your actual private keys here
+    const localPrivateKeys = [
+      "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+      "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
+      "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef",
+      "4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef",
+      "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
+    ];
+
+    const localWallets = localPrivateKeys.map(privateKey => 
+      new Wallet(Keypair.fromSecretKey(Buffer.from(privateKey, 'hex')))
+    );
+
+    const metadata: CreateTokenMetadata = {
+      name: "My Token",
+      symbol: "MTK",
+      description: "A sample token",
+      file: new Blob(["dummy image data"]),
+    };
+
+    async function createAndBuyWithLocalWallets() {
+      const creator = localWallets[0];
+      const mint = Keypair.generate();
+      const buyers = localWallets.slice(1);
+      const buyAmountSol = BigInt(1_000_000_000); // 1 SOL per buyer
+
+      const result = await sdk.createAndBuy(
+        creator.payer,
+        mint,
+        buyers.map(wallet => wallet.payer),
+        metadata,
+        buyAmountSol * BigInt(buyers.length),
+        300n // 3% slippage
+      );
+
+      console.log("Create and buy result with local wallets:", result);
+    }
+
+    createAndBuyWithLocalWallets().catch(console.error);
     ```
   </Step>
 </Steps>
 
-## Verifying the Installation
+## Full Node.js Example
 
-To verify that the SDK has been installed correctly, you can create a simple test file:
+Here's a complete Node.js example that demonstrates how to use the Pumpfundler SDK:
 
 ```typescript
-import { PumpfundlerSDK } from 'pumpfundler-sdk';
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { PumpFundlerSDK, PumpFundlerConfig, CreateTokenMetadata } from "pumpfundler-sdk";
 
-console.log('Pumpfundler SDK version:', PumpfundlerSDK.VERSION);
+// Note: Using hardcoded private keys is not secure for production use
+const CREATOR_PRIVATE_KEY = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+const BUYER_PRIVATE_KEYS = [
+  "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+];
+const JITO_AUTH_PRIVATE_KEY = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+
+async function main() {
+  const connection = new Connection("https://api.mainnet-beta.solana.com");
+
+  const creator = Keypair.fromSecretKey(Buffer.from(CREATOR_PRIVATE_KEY, 'base64'));
+  const buyers = BUYER_PRIVATE_KEYS.map(key => Keypair.fromSecretKey(Buffer.from(key, 'base64')));
+  const jitoAuthKeypair = Keypair.fromSecretKey(Buffer.from(JITO_AUTH_PRIVATE_KEY, 'base64'));
+
+  const config: PumpFundlerConfig = {
+    connection,
+    jitoFee: 1_000_000, // 0.001 SOL
+    commitmentLevel: "confirmed",
+    blockEngineUrl: "https://your-jito-block-engine-url.com",
+    jitoAuthKeypair: jitoAuthKeypair.secretKey.toString('base64'),
+  };
+
+  const wallet = new Wallet(creator);
+  const provider = new AnchorProvider(connection, wallet, {});
+  const sdk = new PumpFundlerSDK(provider, config);
+
+  const mint = Keypair.generate();
+  
+  const metadata: CreateTokenMetadata = {
+    name: "Example Token",
+    symbol: "EXT",
+    description: "An example token created with Pumpfundler SDK",
+    file: new Blob(["Example token image data"]),
+    twitter: "https://twitter.com/exampletoken",
+    telegram: "https://t.me/exampletoken",
+    website: "https://www.exampletoken.com",
+  };
+
+  const buyAmountSol = BigInt(5_000_000_000); // 5 SOL total
+  const slippageBasisPoints = 300n; // 3% slippage tolerance
+
+  try {
+    const result = await sdk.createAndBuy(
+      creator,
+      mint,
+      buyers,
+      metadata,
+      buyAmountSol,
+      slippageBasisPoints
+    );
+
+    console.log("Token creation and initial buy result:", result);
+
+    // Execute additional buy orders
+    for (const buyer of buyers) {
+      const buyResult = await sdk.buy(
+        buyer,
+        mint.publicKey,
+        BigInt(1_000_000_000), // 1 SOL per buyer
+        200n // 2% slippage for individual buys
+      );
+      console.log(`Additional buy result for \${buyer.publicKey.toBase58()}:`, buyResult);
+    }
+
+    // Set up event listeners
+    sdk.addEventListener("createEvent", (event, slot, signature) => {
+      console.log("New token created:", event.name, "at slot", slot, "with signature", signature);
+    });
+
+    sdk.addEventListener("tradeEvent", (event, slot, signature) => {
+      console.log(
+        `Trade event: \${event.isBuy ? "Buy" : "Sell"} of \${event.tokenAmount} tokens`,
+        `for \${event.solAmount} SOL at slot \${slot}`
+      );
+    });
+
+  } catch (error) {
+    console.error("Error in create and buy process:", error);
+  }
+}
+
+main().catch(console.error);
 ```
 
-Run this file using Node.js, and you should see the version of the installed SDK printed to the console.
+To run this example:
 
-## Additional Dependencies
+1. Save the code in `index.ts`
+2. Run `npx ts-node index.ts`
 
-Pumpfundler SDK has peer dependencies on the following packages:
+## Important Security Notes
 
-<CardGroup cols={2}>
-  <Card title="@solana/web3.js" icon="cube">
-    Solana's JavaScript API
-  </Card>
-  <Card title="@coral-xyz/anchor" icon="anchor">
-    Solana's Sealevel runtime framework
-  </Card>
-</CardGroup>
+<Warning>
+  The examples provided use hardcoded private keys and direct keypair manipulation for demonstration purposes. This approach is not secure for production use and should only be used for development and testing.
 
-If you haven't already installed these, you can do so by running:
-
-```bash
-npm install @solana/web3.js @coral-xyz/anchor
-```
-
-## Troubleshooting
-
-<Accordion title="Installation fails with dependency errors">
-  If you encounter dependency-related errors during installation, try the following:
-  1. Clear your npm cache: `npm cache clean --force`
-  2. Delete the `node_modules` folder and `package-lock.json` file
-  3. Run `npm install` again
-</Accordion>
-
-<Accordion title="Version conflicts">
-  If you have version conflicts with other packages, you may need to use a package manager that supports peer dependency resolution, such as yarn or pnpm.
-</Accordion>
+  In a production environment:
+  - Never expose private keys in your code or commit them to version control
+  - Use secure key management solutions
+  - Consider using hardware wallets or other secure signing methods
+  - Implement proper authentication and authorization mechanisms
+</Warning>
 
 ## Next Steps
 
-Now that you have successfully installed Pumpfundler SDK, you're ready to start using it in your project. Here are some next steps:
+Now that you have a working setup, explore these topics to enhance your Pumpfundler SDK usage:
 
 <CardGroup cols={2}>
   <Card title="Configuration" icon="gear" href="/configuration">
-    Learn how to configure the SDK for your specific needs.
+    Learn how to set up and customize the Pumpfundler SDK for your needs.
   </Card>
-  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
-    Understand the fundamental concepts of the Pumpfundler SDK.
+  <Card title="Examples" icon="code" href="/examples">
+    Explore practical code samples and best practices for integration.
   </Card>
 </CardGroup>
-

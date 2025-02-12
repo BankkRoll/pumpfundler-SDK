@@ -1,0 +1,370 @@
+---
+title: "Examples"
+description: "Comprehensive examples and usage patterns for the Pumpfundler SDK"
+---
+
+This guide provides in-depth examples and usage patterns for the Pumpfundler SDK, demonstrating advanced features and best practices.
+
+## Installation and Setup
+
+First, install the Pumpfundler SDK and its dependencies:
+
+```bash
+npm install pumpfundler-sdk @solana/web3.js @coral-xyz/anchor
+```
+
+Now, let's set up the SDK with a basic configuration:
+
+```typescript Setup and Configuration
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
+
+// Initialize connection to Solana network
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+
+// Create a wallet from a private key (for demonstration purposes only)
+const privateKey = "your_private_key_here"; // Replace with actual private key
+const wallet = new Wallet(Keypair.fromSecretKey(Buffer.from(privateKey, 'base64')));
+
+// Configure the SDK
+const config: PumpFundlerConfig = {
+  connection,
+  jitoFee: 1_000_000, // 0.001 SOL
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+  jitoAuthKeypair: "your_jito_auth_keypair_base64", // Replace with actual Jito auth keypair
+};
+
+// Create the provider and SDK instance
+const provider = new AnchorProvider(connection, wallet, {});
+const sdk = new PumpFundlerSDK(provider, config);
+
+console.log("Pumpfundler SDK initialized successfully");
+```
+
+## Token Creation and Initial Buy
+
+Let's create a new token and execute initial buy orders:
+
+```typescript Token Creation and Buy
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK, CreateTokenMetadata } from "pumpfundler-sdk";
+
+async function createAndBuyToken(sdk: PumpFundlerSDK) {
+  const creator = Keypair.fromSecretKey(Buffer.from("creator_private_key_base64", "base64"));
+  const mint = Keypair.generate();
+  
+  const buyers = [
+    Keypair.fromSecretKey(Buffer.from("buyer1_private_key_base64", "base64")),
+    Keypair.fromSecretKey(Buffer.from("buyer2_private_key_base64", "base64")),
+    Keypair.fromSecretKey(Buffer.from("buyer3_private_key_base64", "base64")),
+  ];
+
+  const metadata: CreateTokenMetadata = {
+    name: "Example Token",
+    symbol: "EXT",
+    description: "An example token created with Pumpfundler SDK",
+    file: new Blob(["Example token image data"]),
+    twitter: "https://twitter.com/exampletoken",
+    telegram: "https://t.me/exampletoken",
+    website: "https://www.exampletoken.com",
+  };
+
+  const buyAmountSol = BigInt(5_000_000_000); // 5 SOL total
+  const slippageBasisPoints = 300n; // 3% slippage tolerance
+
+  try {
+    const result = await sdk.createAndBuy(
+      creator,
+      mint,
+      buyers,
+      metadata,
+      buyAmountSol,
+      slippageBasisPoints
+    );
+
+    console.log("Token creation and initial buy result:", result);
+
+    // Execute additional buy orders
+    for (const buyer of buyers) {
+      const buyResult = await sdk.buy(
+        buyer,
+        mint.publicKey,
+        BigInt(1_000_000_000), // 1 SOL per buyer
+        200n // 2% slippage for individual buys
+      );
+      console.log(`Additional buy result for \${buyer.publicKey.toBase58()}:`, buyResult);
+    }
+  } catch (error) {
+    console.error("Error in create and buy process:", error);
+  }
+}
+
+// Usage
+createAndBuyToken(sdk).catch(console.error);
+```
+
+## Buying Tokens
+
+Example of buying tokens using the SDK:
+
+```typescript Buy Tokens
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function buyTokens(sdk: PumpFundlerSDK, mintAddress: string, amount: number) {
+  const buyer = Keypair.fromSecretKey(Buffer.from("buyer_private_key_base64", "base64"));
+  const mint = new PublicKey(mintAddress);
+  const buyAmountSol = BigInt(amount * 1e9); // Convert SOL to lamports
+  const slippageBasisPoints = 200n; // 2% slippage tolerance
+
+  try {
+    const result = await sdk.buy(
+      buyer,
+      mint,
+      buyAmountSol,
+      slippageBasisPoints
+    );
+    console.log("Buy result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error buying tokens:", error);
+    throw error;
+  }
+}
+
+// Usage
+const mintAddress = "your_token_mint_address";
+const amountToBuy = 1; // 1 SOL
+buyTokens(sdk, mintAddress, amountToBuy).catch(console.error);
+```
+
+## Selling Tokens
+
+Example of selling tokens using the SDK:
+
+```typescript Sell Tokens
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function sellTokens(sdk: PumpFundlerSDK, mintAddress: string, amount: number) {
+  const seller = Keypair.fromSecretKey(Buffer.from("seller_private_key_base64", "base64"));
+  const mint = new PublicKey(mintAddress);
+  const sellTokenAmount = BigInt(amount * 1e6); // Assuming 6 decimal places for the token
+  const slippageBasisPoints = 200n; // 2% slippage tolerance
+
+  try {
+    const result = await sdk.sell(
+      seller,
+      mint,
+      sellTokenAmount,
+      slippageBasisPoints
+    );
+    console.log("Sell result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error selling tokens:", error);
+    throw error;
+  }
+}
+
+// Usage
+const mintAddress = "your_token_mint_address";
+const amountToSell = 1000; // 1000 tokens
+sellTokens(sdk, mintAddress, amountToSell).catch(console.error);
+```
+
+## Working with Bonding Curves
+
+Analyze and interact with bonding curves:
+
+```typescript Bonding Curve Analysis
+import { PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function analyzeBondingCurve(sdk: PumpFundlerSDK, mintAddress: string) {
+  const mint = new PublicKey(mintAddress);
+  const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+  if (!bondingCurveAccount) {
+    console.error("Bonding curve not found");
+    return;
+  }
+
+  const globalAccount = await sdk.getGlobalAccount();
+
+  console.log("Virtual Token Reserves:", bondingCurveAccount.virtualTokenReserves.toString());
+  console.log("Virtual SOL Reserves:", bondingCurveAccount.virtualSolReserves.toString());
+  console.log("Real Token Reserves:", bondingCurveAccount.realTokenReserves.toString());
+  console.log("Real SOL Reserves:", bondingCurveAccount.realSolReserves.toString());
+
+  const buyAmount = BigInt(1e9); // 1 SOL
+  const buyPrice = bondingCurveAccount.getBuyPrice(buyAmount);
+  console.log(`Buy Price for 1 SOL: \${buyPrice} tokens`);
+
+  const sellAmount = BigInt(1e6); // 1 million tokens
+  const sellPrice = bondingCurveAccount.getSellPrice(sellAmount, globalAccount.feeBasisPoints);
+  console.log(`Sell Price for 1M tokens: \${sellPrice} lamports`);
+
+  const marketCap = bondingCurveAccount.getMarketCapSOL();
+  console.log("Market Cap in SOL:", marketCap.toString());
+
+  const finalMarketCap = bondingCurveAccount.getFinalMarketCapSOL(globalAccount.feeBasisPoints);
+  console.log("Final Market Cap in SOL:", finalMarketCap.toString());
+}
+
+// Usage
+const mintAddress = "your_token_mint_address";
+analyzeBondingCurve(sdk, mintAddress).catch(console.error);
+```
+
+## Advanced AMM Operations
+
+Utilize the AMM (Automated Market Maker) functionality for complex trading scenarios:
+
+```typescript AMM Operations
+import { AMM, PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function performAdvancedAMMOperations(sdk: PumpFundlerSDK) {
+  const globalAccount = await sdk.getGlobalAccount();
+  const amm = AMM.fromGlobalAccount(globalAccount);
+
+  // Simulate a large buy
+  const buyTokens = BigInt(1_000_000_000); // 1 billion tokens
+  const buyPrice = amm.getBuyPrice(buyTokens);
+  console.log(`Buy price for \${buyTokens} tokens: \${buyPrice} lamports`);
+
+  const buyResult = amm.applyBuy(buyTokens);
+  console.log("Buy simulation result:", buyResult);
+
+  // Simulate a large sell
+  const sellTokens = BigInt(500_000_000); // 500 million tokens
+  const sellPrice = amm.getSellPrice(sellTokens);
+  console.log(`Sell price for \${sellTokens} tokens: \${sellPrice} lamports`);
+
+  const sellResult = amm.applySell(sellTokens);
+  console.log("Sell simulation result:", sellResult);
+
+  // Analyze AMM state after operations
+  console.log("AMM State after operations:");
+  console.log("Virtual SOL Reserves:", amm.virtualSolReserves.toString());
+  console.log("Virtual Token Reserves:", amm.virtualTokenReserves.toString());
+  console.log("Real SOL Reserves:", amm.realSolReserves.toString());
+  console.log("Real Token Reserves:", amm.realTokenReserves.toString());
+}
+
+// Usage
+performAdvancedAMMOperations(sdk).catch(console.error);
+```
+
+## Event Handling
+
+Set up event listeners for real-time updates:
+
+```typescript Event Handling
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+function setupEventListeners(sdk: PumpFundlerSDK) {
+  // Listen for new token creation events
+  const createEventListener = sdk.addEventListener("createEvent", (event, slot, signature) => {
+    console.log("New token created:", event.name, "at slot", slot, "with signature", signature);
+  });
+
+  // Listen for trade events
+  const tradeEventListener = sdk.addEventListener("tradeEvent", (event, slot, signature) => {
+    console.log(
+      `Trade event: \${event.isBuy ? "Buy" : "Sell"} of \${event.tokenAmount} tokens`,
+      `for \${event.solAmount} SOL at slot \${slot}`
+    );
+  });
+
+  // Listen for completion events
+  const completeEventListener = sdk.addEventListener("completeEvent", (event, slot, signature) => {
+    console.log("Token sale completed for mint:", event.mint.toBase58(), "at slot", slot);
+  });
+
+  // Listen for parameter change events
+  const setParamsEventListener = sdk.addEventListener("setParamsEvent", (event, slot, signature) => {
+    console.log("Global parameters updated at slot", slot, "New fee basis points:", event.feeBasisPoints.toString());
+  });
+
+  // Return function to remove event listeners
+  return () => {
+    sdk.removeEventListener(createEventListener);
+    sdk.removeEventListener(tradeEventListener);
+    sdk.removeEventListener(completeEventListener);
+    sdk.removeEventListener(setParamsEventListener);
+  };
+}
+
+// Usage
+const removeListeners = setupEventListeners(sdk);
+// Call removeListeners() when you want to stop listening to events
+```
+
+## Error Handling and Recovery
+
+Implement robust error handling for your Pumpfundler-based applications:
+
+```typescript Error Handling
+import { PumpFundlerSDK, TransactionResult } from "pumpfundler-sdk";
+import { Keypair, PublicKey } from "@solana/web3.js";
+
+async function robustBuyOperation(sdk: PumpFundlerSDK, buyer: Keypair, mint: PublicKey, amount: bigint): Promise<TransactionResult> {
+  const maxRetries = 3;
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      const result = await sdk.buy(buyer, mint, amount, 500n); // 5% slippage
+      if (result.success) {
+        console.log("Buy operation successful:", result.signature);
+        return result;
+      } else {
+        console.warn("Buy operation failed, retrying...");
+        retries++;
+      }
+    } catch (error) {
+      console.error("Error during buy operation:", error);
+      if (error.message.includes("insufficient funds")) {
+        console.error("Insufficient funds, aborting retry");
+        return { success: false, error: "Insufficient funds" };
+      }
+      retries++;
+    }
+
+    // Exponential backoff
+    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+  }
+
+  console.error("Max retries reached, buy operation failed");
+  return { success: false, error: "Max retries reached" };
+}
+
+// Usage
+const buyer = Keypair.fromSecretKey(Buffer.from("buyer_private_key_base64", "base64"));
+const mintPublicKey = new PublicKey("token_mint_address");
+const buyAmount = BigInt(1_000_000_000); // 1 SOL
+
+robustBuyOperation(sdk, buyer, mintPublicKey, buyAmount)
+  .then(result => console.log("Final result:", result))
+  .catch(console.error);
+```
+
+## Important Security Notes
+
+<Warning>
+  The examples provided use hardcoded private keys and direct keypair manipulation for demonstration purposes. This approach is not secure for production use and should only be used for development and testing.
+
+  In a production environment:
+  - Never expose private keys in your code or commit them to version control
+  - Use secure key management solutions
+  - Consider using hardware wallets or other secure signing methods
+  - Implement proper authentication and authorization mechanisms
+</Warning>
+
+<CardGroup cols={1}>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Understand the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+</CardGroup>
