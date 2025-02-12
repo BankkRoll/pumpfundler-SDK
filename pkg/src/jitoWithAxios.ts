@@ -80,7 +80,6 @@ export const jitoWithAxios = async (
     console.log(`Calculated fee: ${config.jitoFee / LAMPORTS_PER_SOL} sol`);
     const latestBlockhash = await config.connection.getLatestBlockhash();
 
-    // Add SDK fee
     const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
     const sdkFeeTx = createFeeInstruction(payer.publicKey, sdkFee);
 
@@ -93,7 +92,7 @@ export const jitoWithAxios = async (
           toPubkey: jitoFeeWallet,
           lamports: config.jitoFee,
         }),
-        sdkFeeTx.instructions[0], // Add SDK fee instruction
+        sdkFeeTx.instructions[0],
       ],
     }).compileToV0Message();
 

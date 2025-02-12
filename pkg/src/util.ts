@@ -140,7 +140,6 @@ export async function sendTx(
     newTx.add(addPriorityFee);
   }
 
-  // Add fee instruction
   const fee = calculateTransactionFee(tx.instructions[0].data);
   newTx.add(createFeeInstruction(payer, fee));
 
@@ -220,7 +219,6 @@ export async function buildTx(
     newTx.add(addPriorityFee);
   }
 
-  // Add fee instruction
   const fee = calculateTransactionFee(tx.instructions[0].data);
   newTx.add(createFeeInstruction(payer, fee));
 

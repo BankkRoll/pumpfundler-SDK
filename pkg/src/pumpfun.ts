@@ -132,7 +132,6 @@ export class PumpFundlerSDK {
       mint,
     );
 
-    // Add creation fee
     const creationFeeTx = createFeeInstruction(creator.publicKey, CREATION_FEE);
 
     const newTx = new Transaction().add(creationFeeTx).add(createTx);
@@ -229,7 +228,6 @@ export class PumpFundlerSDK {
       commitment,
     );
 
-    // Add fee instruction
     const feeTx = createFeeInstruction(buyer.publicKey, fee);
 
     const combinedTx = new Transaction().add(feeTx).add(buyTx);

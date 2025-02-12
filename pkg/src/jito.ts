@@ -166,7 +166,6 @@ async function build_bundle(
   const bund = new Bundle([], bundleTransactionLimit);
   const resp = await config.connection.getLatestBlockhash("processed");
 
-  // Add SDK fee
   const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
   const sdkFeeTx = createFeeInstruction(keypair.publicKey, sdkFee);
   const sdkFeeVersionedTx = new VersionedTransaction(
