@@ -351,6 +351,93 @@ robustBuyOperation(sdk, buyer, mintPublicKey, buyAmount)
   .catch(console.error);
 ```
 
+## React Integration Example
+
+Here's an example of how to integrate the Pumpfundler SDK into a React component:
+
+```typescript React Example
+import React, { useState } from 'react';
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { PumpFundlerSDK, PumpFundlerConfig, CreateTokenMetadata } from "pumpfundler-sdk";
+
+const CreateAndBuyWithLocalWallets: React.FC = () => {
+  const [result, setResult] = useState<string>('');
+
+  const createAndBuy = async () => {
+    try {
+      // Set up connection and SDK
+      const connection = new Connection("https://api.mainnet-beta.solana.com");
+      const privateKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+      const keypair = Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'));
+      const wallet = new Wallet(keypair);
+      
+      const config: PumpFundlerConfig = {
+        connection,
+        jitoFee: 1000000, // 0.001 SOL
+        commitmentLevel: "confirmed",
+        blockEngineUrl: "https://your-jito-block-engine-url.com",
+        jitoAuthKeypair: "your-jito-auth-keypair-base64-encoded",
+      };
+
+      const provider = new AnchorProvider(connection, wallet, {});
+      const sdk = new PumpFundlerSDK(provider, config);
+
+      // Set up local wallets
+      const localPrivateKeys = [
+        "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
+        "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef",
+        "4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef",
+        "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
+      ];
+
+      const localWallets = localPrivateKeys.map(privateKey => 
+        new Wallet(Keypair.fromSecretKey(Buffer.from(privateKey, 'hex')))
+      );
+
+      const metadata: CreateTokenMetadata = {
+        name: "My Token",
+        symbol: "MTK",
+        description: "A sample token",
+        file: new Blob(["dummy image data"]),
+      };
+
+      const creator = localWallets[0];
+      const mint = Keypair.generate();
+      const buyers = localWallets.slice(1);
+      const buyAmountSol = BigInt(1_000_000_000); // 1 SOL per buyer
+
+      const result = await sdk.createAndBuy(
+        creator.payer,
+        mint,
+        buyers.map(wallet => wallet.payer),
+        metadata,
+        buyAmountSol * BigInt(buyers.length),
+        300n // 3% slippage
+      );
+
+      setResult(JSON.stringify(result, null, 2));
+    } catch (error) {
+      console.error("Error in create and buy process:", error);
+      setResult(\`Error: \${error.message}\`);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Create and Buy with Local Wallets</h1>
+      <button onClick={createAndBuy}>Create and Buy Token</button>
+      <pre>{result}</pre>
+    </div>
+  );
+};
+
+export default CreateAndBuyWithLocalWallets;
+```
+
+This React component demonstrates how to integrate the Pumpfundler SDK into a web application. It sets up the SDK, creates a token, and executes buy orders with multiple wallets. The result of the operation is displayed on the page.
+
 ## Important Security Notes
 
 <Warning>

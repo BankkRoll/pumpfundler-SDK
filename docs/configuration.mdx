@@ -1,137 +1,239 @@
 ---
 title: "Configuration"
-description: "Learn how to configure Pumpfundler SDK for your Solana project"
+description: "Configuring Pumpfundler SDK for optimal performance in Solana projects"
 ---
 
-# Configuring Pumpfundler SDK
+This guide provides an in-depth look at configuring the Pumpfundler SDK for optimal performance in your Solana project. We'll cover detailed explanations of each configuration option.
 
-Proper configuration is crucial for the optimal performance of Pumpfundler SDK. This guide will walk you through the process of setting up and configuring the SDK for your Solana project.
+## PumpfundlerConfig Interface
 
-## Basic Configuration
-
-To start using Pumpfundler SDK, you need to create a `PumpfundlerConfig` object and initialize the SDK. Here's a basic example:
+The core of the SDK configuration is the `PumpfundlerConfig` interface:
 
 ```typescript
-import { Connection, Keypair } from "@solana/web3.js";
-import { PumpfundlerSDK, PumpfundlerConfig } from "pumpfundler-sdk";
-import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-
-const connection = new Connection("https://api.mainnet-beta.solana.com");
-const wallet = new Wallet(Keypair.generate());
-
-const config: PumpfundlerConfig = {
-  connection,
-  jitoFee: 1000000, // 0.001 SOL
-  commitmentLevel: "confirmed",
-  blockEngineUrl: "https://your-jito-block-engine-url.com",
-  jitoAuthKeypair: "your-jito-auth-keypair-base58",
-};
-
-const provider = new AnchorProvider(connection, wallet, {});
-const sdk = new PumpfundlerSDK(provider, config);
+interface PumpfundlerConfig {
+  connection: Connection;
+  jitoFee: number;
+  commitmentLevel: Commitment;
+  blockEngineUrl: string;
+  jitoAuthKeypair: string;
+}
 ```
 
-## Configuration Options
-
-Let's break down the configuration options:
+Let's break down each property and explore its significance:
 
 <Accordion title="connection">
-  This is a Solana `Connection` object that specifies which Solana cluster to connect to. You can use mainnet, testnet, or devnet depending on your development stage.
+  The `connection` property is an instance of the Solana `Connection` class. It's crucial for interacting with the Solana network.
 
-  ```typescript
-  const connection = new Connection("https://api.mainnet-beta.solana.com");
-  ```
+  <CodeBlock language="typescript">
+  import { Connection } from "@solana/web3.js";
+
+  const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  </CodeBlock>
+
+  <Tip>
+    For production use, consider using a dedicated RPC node or a service like QuickNode or Alchemy for better performance and reliability.
+  </Tip>
 </Accordion>
 
 <Accordion title="jitoFee">
-  The fee (in lamports) to be paid for Jito MEV protection. In the example, it's set to 0.001 SOL (1,000,000 lamports).
+  The `jitoFee` is the amount (in lamports) to be paid for Jito MEV protection services.
 
-  ```typescript
-  jitoFee: 1000000, // 0.001 SOL
-  ```
+  <CodeBlock language="typescript">
+  const jitoFee = 1_000_000; // 0.001 SOL
+  </CodeBlock>
+
+  <Warning>
+    Carefully balance this fee. Too low might result in reduced MEV protection, while too high unnecessarily increases transaction costs.
+  </Warning>
 </Accordion>
 
 <Accordion title="commitmentLevel">
-  Specifies the commitment level for transactions. Options include:
-  - `"processed"`
-  - `"confirmed"`
-  - `"finalized"`
+  The `commitmentLevel` determines the level of confirmation you require for transactions.
 
-  ```typescript
-  commitmentLevel: "confirmed",
-  ```
+  <CodeBlock language="typescript">
+  import { Commitment } from "@solana/web3.js";
+
+  const commitmentLevel: Commitment = "confirmed";
+  </CodeBlock>
+
+  Options include:
+  - `"processed"`: Fastest, but least certain
+  - `"confirmed"`: Good balance of speed and certainty
+  - `"finalized"`: Slowest, but most certain
+
+  <Tip>
+    Use "confirmed" for most applications. Only use "finalized" when absolute certainty is required.
+  </Tip>
 </Accordion>
 
 <Accordion title="blockEngineUrl">
-  The URL of the Jito block engine. This is required for MEV protection features.
+  The `blockEngineUrl` is the endpoint for Jito's block engine, crucial for MEV protection features.
 
-  ```typescript
-  blockEngineUrl: "https://your-jito-block-engine-url.com",
-  ```
+  <CodeBlock language="typescript">
+  const blockEngineUrl = "https://your-jito-block-engine-url.com";
+  </CodeBlock>
+
+  <Note>
+    Ensure this URL is correct and accessible from your deployment environment.
+  </Note>
 </Accordion>
 
 <Accordion title="jitoAuthKeypair">
-  The base58-encoded private key for Jito authentication. This is required for secure communication with the Jito block engine.
+  The `jitoAuthKeypair` is a base58-encoded string of the keypair used for Jito authentication.
 
-  ```typescript
-  jitoAuthKeypair: "your-jito-auth-keypair-base58",
-  ```
+  <CodeBlock language="typescript">
+  import { Keypair } from "@solana/web3.js";
+
+  const jitoAuthKeypair = Keypair.generate().secretKey.toString('base58');
+  </CodeBlock>
+
+  <Warning>
+    Never expose this keypair in client-side code or public repositories. Use secure key management practices.
+  </Warning>
 </Accordion>
 
-## Advanced Configuration
+## SDK Initialization
 
-For more advanced use cases, you can also configure:
-
-### Custom RPC Endpoints
-
-If you're using a custom RPC endpoint, you can specify it when creating the `Connection`:
+Here's how to initialize the SDK with configuration:
 
 ```typescript
-const connection = new Connection("https://your-custom-rpc-endpoint.com");
-```
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
 
-### Provider Options
+const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+const wallet = new Wallet(Keypair.generate());
 
-You can pass additional options to the `AnchorProvider`:
+const config: PumpFundlerConfig = {
+  connection,
+  jitoFee: 1_000_000, // 0.001 SOL
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+  jitoAuthKeypair: Keypair.generate().secretKey.toString('base58'),
+};
 
-```typescript
 const provider = new AnchorProvider(connection, wallet, {
   preflightCommitment: "processed",
   commitment: "confirmed",
 });
+
+const sdk = new PumpFundlerSDK(provider, config);
 ```
 
-## Environment-Specific Configuration
+## Optimizing Performance
 
-It's a good practice to use different configurations for development, testing, and production environments. You can use environment variables to manage this:
+To maximize the performance of your Pumpfundler SDK integration:
+
+1. **RPC Node Selection**: Choose a reliable and fast RPC node. Consider using dedicated nodes or services like QuickNode or Alchemy.
+
+2. **Commitment Levels**: Use appropriate commitment levels for different operations:
+   - Use "processed" for non-critical, high-frequency operations
+   - Use "confirmed" for most transactions
+   - Reserve "finalized" for critical, high-value transactions
+
+3. **Jito Fee Optimization**: Regularly adjust the `jitoFee` based on network conditions and your MEV protection needs.
+
+4. **Error Handling**: Implement robust error handling, especially for network-related issues:
+
+   ```typescript
+   try {
+     const result = await sdk.createAndBuy(/* ... */);
+     // Handle successful result
+   } catch (error) {
+     if (error instanceof SolanaError) {
+       // Handle Solana-specific errors
+     } else {
+       // Handle other errors
+     }
+   }
+   ```
+
+5. **Batch Processing**: For multiple operations, consider using batching techniques:
+
+   ```typescript
+   const transactions = await Promise.all([
+     sdk.getBuyInstructions(/* ... */),
+     sdk.getSellInstructions(/* ... */),
+     // More instructions...
+   ]);
+
+   const batchedTx = await sdk.createBatchedTransaction(transactions);
+   const result = await sdk.sendAndConfirmTransaction(batchedTx);
+   ```
+
+## Features
+
+### Custom Event Handling
+
+Utilize the SDK's event system for real-time updates:
 
 ```typescript
-const config: PumpfundlerConfig = {
-  connection: new Connection(process.env.SOLANA_RPC_URL),
-  jitoFee: process.env.JITO_FEE ? parseInt(process.env.JITO_FEE) : 1000000,
-  commitmentLevel: process.env.COMMITMENT_LEVEL || "confirmed",
-  blockEngineUrl: process.env.JITO_BLOCK_ENGINE_URL,
-  jitoAuthKeypair: process.env.JITO_AUTH_KEYPAIR,
-};
+sdk.addEventListener("tradeEvent", (event, slot, signature) => {
+  console.log(`Trade event: ${event.isBuy ? "Buy" : "Sell"} of ${event.tokenAmount} tokens`,
+              `for ${event.solAmount} SOL at slot ${slot}`);
+});
 ```
 
-## Configuration Best Practices
+### Bonding Curve Calculations
 
-<Check>Use environment variables for sensitive information like RPC URLs and auth keys</Check>
-<Check>Set appropriate commitment levels based on your application's needs</Check>
-<Check>Adjust Jito fees based on network congestion and your MEV protection requirements</Check>
-<Check>Use custom RPC endpoints for better performance and reliability in production</Check>
+Leverage the `BondingCurveAccount` for price calculations:
+
+```typescript
+const bondingCurve = await sdk.getBondingCurveAccount(mintPublicKey);
+if (bondingCurve) {
+  const buyPrice = bondingCurve.getBuyPrice(BigInt(1000000)); // Price for 1 token
+  const marketCap = bondingCurve.getMarketCapSOL();
+  console.log(`Buy price: ${buyPrice}, Market Cap: ${marketCap}`);
+}
+```
+
+### MEV Protection with Jito
+
+Utilize Jito integration for enhanced MEV protection:
+
+```typescript
+import { bundle } from "pumpfundler-sdk";
+
+const txs = [/* Your versioned transactions */];
+const result = await bundle(txs, signerKeypair, {
+  connection,
+  jitoFee: config.jitoFee,
+  blockEngineUrl: config.blockEngineUrl,
+  jitoAuthKeypair: config.jitoAuthKeypair
+});
+
+console.log("Bundle result:", result);
+```
+
+## Security Considerations
+
+1. **Key Management**: Never hardcode private keys. Use secure key management solutions.
+2. **Environment Variables**: Use environment variables for sensitive configuration:
+
+   ```typescript
+   const config: PumpFundlerConfig = {
+     // ...
+     jitoAuthKeypair: process.env.JITO_AUTH_KEYPAIR,
+     // ...
+   };
+   ```
+
+3. **Rate Limiting**: Implement rate limiting to prevent abuse of your SDK integration.
+4. **Monitoring**: Set up monitoring and alerting for unusual activity or errors in your SDK usage.
 
 ## Next Steps
 
-Now that you've configured Pumpfundler SDK, you're ready to start using its features:
+Explore the following sections to dive deeper into the PumpFundler SDK:
 
 <CardGroup cols={2}>
   <Card title="Examples" icon="code" href="/examples">
     Explore practical code samples and best practices for integration.
   </Card>
-  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    <Card title="Fees" icon="ticket" href="/fees">
     Understand the fundamental concepts of the Pumpfundler SDK.
   </Card>
 </CardGroup>
 
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Dive into the fundamental concepts of the Pumpfundler SDK.
+  </Card>

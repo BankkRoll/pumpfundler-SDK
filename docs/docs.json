@@ -3,9 +3,16 @@
   "theme": "maple",
   "name": "PumpFun SDK",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#55D799",
-    "dark": "#0D9373"
+    "primary": "#55d391",
+    "light": "#55d391",
+    "dark": "#55d391"
+  },
+  "background": {
+    "decoration": "gradient",
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#000000"
+    }
   },
   "favicon": "/pumpfun.png",
   "navigation": {
@@ -56,7 +63,7 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/pumpfun/sdk",
+          "href": "https://github.com/BankkRoll/pumpfundler-SDK",
           "icon": "github"
         }
       ]
@@ -69,7 +76,7 @@
   "navbar": {
     "primary": {
       "type": "button",
-      "label": "Get Started",
+      "label": "GitHub",
       "href": "https://github.com/BankkRoll/pumpfundler-SDK"
     }
   },

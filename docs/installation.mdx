@@ -3,8 +3,6 @@ title: "Installation"
 description: "Learn how to install, set up, and use Pumpfundler SDK in your Node.js and React projects"
 ---
 
-# Installing and Using Pumpfundler SDK
-
 This guide will walk you through the process of installing Pumpfundler SDK and setting up advanced examples in both Node.js and React environments.
 
 ## Prerequisites
@@ -214,26 +212,13 @@ async function main() {
 main().catch(console.error);
 ```
 
-To run this example:
-
-1. Save the code in `index.ts`
-2. Run `npx ts-node index.ts`
-
-## Important Security Notes
-
 <Warning>
-  The examples provided use hardcoded private keys and direct keypair manipulation for demonstration purposes. This approach is not secure for production use and should only be used for development and testing.
-
-  In a production environment:
-  - Never expose private keys in your code or commit them to version control
-  - Use secure key management solutions
-  - Consider using hardware wallets or other secure signing methods
-  - Implement proper authentication and authorization mechanisms
+  Remember that this example uses hardcoded private keys for demonstration purposes. In a real application, you should never expose private keys in your frontend code. Instead, use secure key management solutions and handle sensitive operations on a secure backend.
 </Warning>
 
 ## Next Steps
 
-Now that you have a working setup, explore these topics to enhance your Pumpfundler SDK usage:
+Explore the following sections to dive deeper into the PumpFundler SDK:
 
 <CardGroup cols={2}>
   <Card title="Configuration" icon="gear" href="/configuration">
@@ -241,5 +226,11 @@ Now that you have a working setup, explore these topics to enhance your Pumpfund
   </Card>
   <Card title="Examples" icon="code" href="/examples">
     Explore practical code samples and best practices for integration.
+  </Card>
+  <Card title="Fees" icon="ticket" href="/fees">
+    Understand the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Dive into the fundamental concepts of the Pumpfundler SDK.
   </Card>
 </CardGroup>
