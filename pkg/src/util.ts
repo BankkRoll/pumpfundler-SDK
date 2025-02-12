@@ -34,13 +34,13 @@ export const DEFAULT_COMMITMENT: Commitment = "finalized";
 export const DEFAULT_FINALITY: Finality = "finalized";
 
 /**
- * Fee for creating a new token (0.05 SOL)
+ * SDK Fee for creating a new token (0.01 SOL)
  * @constant {bigint}
  */
-export const CREATION_FEE = BigInt(0.05 * LAMPORTS_PER_SOL);
+export const CREATION_FEE = BigInt(0.01 * LAMPORTS_PER_SOL);
 
 /**
- * Transaction fee percentage (1%)
+ * SDK Transaction fee percentage (1%)
  * @constant {number}
  */
 export const TRANSACTION_FEE_PERCENT = 0.01;
@@ -50,7 +50,9 @@ export const TRANSACTION_FEE_PERCENT = 0.01;
  * @constant {PublicKey}
  * @todo Replace with actual fee wallet address
  */
-export const FEE_RECIPIENT = new PublicKey("YOUR_FEE_RECIPIENT_ADDRESS");
+export const FEE_RECIPIENT = new PublicKey(
+  "HnE7hxHwj6J49rhvrPGZfyfYw8YEWhV3BPV2X7yDXRdv",
+);
 
 /**
  * Calculates the buy amount with slippage
@@ -80,11 +82,16 @@ export const calculateWithSlippageSell = (
 
 /**
  * Calculates the transaction fee based on the amount
- * @param {bigint} amount - The transaction amount
+ * @param {bigint} dataSize - The transaction data size
  * @returns {bigint} The calculated fee
  */
-export const calculateTransactionFee = (amount: bigint): bigint => {
-  return BigInt(Math.floor(Number(amount) * TRANSACTION_FEE_PERCENT));
+export const calculateTransactionFee = (
+  dataSize: bigint | undefined,
+): bigint => {
+  if (dataSize === undefined) {
+    return BigInt(0);
+  }
+  return BigInt(Math.floor(Number(dataSize) * TRANSACTION_FEE_PERCENT));
 };
 
 /**
@@ -140,8 +147,14 @@ export async function sendTx(
     newTx.add(addPriorityFee);
   }
 
-  const fee = calculateTransactionFee(tx.instructions[0].data);
-  newTx.add(createFeeInstruction(payer, fee));
+  if (tx.instructions.length > 0 && tx.instructions[0]?.data) {
+    const fee = calculateTransactionFee(BigInt(tx.instructions[0].data.length));
+    newTx.add(createFeeInstruction(payer, fee));
+  } else {
+    console.warn(
+      "Transaction has no instructions or first instruction has no data. Skipping fee calculation.",
+    );
+  }
 
   newTx.add(tx);
   const versionedTx = await buildVersionedTx(
@@ -219,8 +232,14 @@ export async function buildTx(
     newTx.add(addPriorityFee);
   }
 
-  const fee = calculateTransactionFee(tx.instructions[0].data);
-  newTx.add(createFeeInstruction(payer, fee));
+  if (tx.instructions.length > 0 && tx.instructions[0]?.data) {
+    const fee = calculateTransactionFee(BigInt(tx.instructions[0].data.length));
+    newTx.add(createFeeInstruction(payer, fee));
+  } else {
+    console.warn(
+      "Transaction has no instructions or first instruction has no data. Skipping fee calculation.",
+    );
+  }
 
   newTx.add(tx);
   const versionedTx = await buildVersionedTx(

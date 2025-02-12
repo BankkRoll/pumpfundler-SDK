@@ -1,0 +1,97 @@
+---
+title: "Fee Structure"
+description: "Understand the fees associated with using the PumpFundler SDK"
+---
+
+# PumpFundler SDK Fee Structure
+
+<Note>
+  **Transparency in Fees**: We believe in clear and upfront pricing. This page provides a detailed breakdown of our fee structure to ensure you have all the information needed to make informed decisions.
+</Note>
+
+## Overview of Fees
+
+PumpFundler SDK implements two primary types of fees:
+
+<CardGroup cols={2}>
+  <Card title="Creation Fee" icon="coins">
+    0.01 SOL per token creation
+  </Card>
+  <Card title="Transaction Fee" icon="receipt">
+    1% of the transaction amount
+  </Card>
+</CardGroup>
+
+## Detailed Fee Explanation
+
+### Token Creation Fee
+
+When you create a new token using the PumpFundler SDK, a flat fee of 0.01 SOL is charged. This fee is applied regardless of the token's parameters.
+
+### Transaction Fee
+
+For each transaction (buy or sell) executed through the SDK, a fee of 1% of the transaction amount is charged. This fee is collected in the same token or SOL that is being transacted.
+
+## What These Fees Cover
+
+Our fee structure is designed to support the ongoing development and maintenance of the PumpFundler SDK. Here's what your fees contribute to:
+
+<Check>Infrastructure costs for maintaining the SDK</Check>
+<Check>Ongoing development and improvements</Check>
+<Check>Technical support for SDK users</Check>
+<Check>Integration with Jito for MEV protection</Check>
+
+## Fee Calculation
+
+### Creation Fee
+The creation fee is a fixed amount of 0.01 SOL, which is equivalent to 10,000,000 lamports.
+
+### Transaction Fee
+The transaction fee is calculated as 1% of the transaction amount. For example:
+- If you're buying 100 SOL worth of tokens, the fee would be 1 SOL.
+- If you're selling tokens worth 50 SOL, the fee would be 0.5 SOL.
+
+## Transparency and Updates
+
+We are committed to maintaining transparency in our fee structure. Any changes to our fees will be communicated well in advance through our official channels and updated in this documentation.
+
+## Examples
+
+Here are some examples to illustrate how the fees are applied:
+
+<AccordionGroup>
+  <Accordion title="Creating a New Token">
+    - Token Creation Fee: 0.01 SOL
+    - Total Cost: 0.01 SOL
+  </Accordion>
+  <Accordion title="Buying Tokens">
+    - Transaction Amount: 100 SOL
+    - Transaction Fee: 1 SOL (1% of 100 SOL)
+    - Total Cost: 101 SOL
+  </Accordion>
+  <Accordion title="Selling Tokens">
+    - Transaction Amount: 50 SOL worth of tokens
+    - Transaction Fee: 0.5 SOL (1% of 50 SOL)
+    - Net Received: 49.5 SOL
+  </Accordion>
+</AccordionGroup>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why is there a creation fee?">
+    The creation fee helps cover the computational resources required to deploy a new token on the Solana blockchain and supports the ongoing development of the SDK.
+  </Accordion>
+  <Accordion title="Is the transaction fee the same for buying and selling?">
+    Yes, the transaction fee is consistently 1% of the transaction amount, whether you're buying or selling tokens.
+  </Accordion>
+  <Accordion title="Are there any additional network fees?">
+    The fees mentioned here are specific to the PumpFundler SDK. Solana network fees (which are typically very low) will also apply to transactions.
+  </Accordion>
+</AccordionGroup>
+
+<CardGroup cols={1}>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Understand the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+</CardGroup>

@@ -83,7 +83,7 @@ interface PumpFundlerConfig {
  * Main SDK class for interacting with the PumpFun protocol
  */
 export class PumpFundlerSDK {
-  public program: Program<PumpFun>; // TODO: Fix type
+  public program: Program<PumpFun & Idl>;
   public connection: Connection;
   private config: PumpFundlerConfig;
 
@@ -93,7 +93,11 @@ export class PumpFundlerSDK {
    * @param {PumpFundlerConfig} config - The SDK configuration
    */
   constructor(provider: AnchorProvider, config: PumpFundlerConfig) {
-    this.program = new Program<PumpFun>(IDL as PumpFun, provider); // TODO: Fix type assertion
+    this.program = new Program<PumpFun & Idl>(
+      IDL as PumpFun & Idl,
+      new PublicKey(PROGRAM_ID),
+      provider,
+    );
     this.connection = config.connection;
     this.config = config;
   }
@@ -282,22 +286,25 @@ export class PumpFundlerSDK {
       finality,
     );
 
-    if (sellResults.success && sellResults.results) {
-      const soldAmount =
-        sellResults.results.meta?.postBalances[0] -
-        sellResults.results.meta?.preBalances[0];
-      if (soldAmount) {
-        const fee = calculateTransactionFee(BigInt(soldAmount));
-        const feeTx = createFeeInstruction(seller.publicKey, fee);
-        await sendTx(
-          this.connection,
-          feeTx,
-          seller.publicKey,
-          [seller],
-          priorityFees,
-          commitment,
-          finality,
-        );
+    if (sellResults.success && sellResults.results?.meta) {
+      const postBalance = sellResults.results.meta.postBalances[0];
+      const preBalance = sellResults.results.meta.preBalances[0];
+
+      if (typeof postBalance === "number" && typeof preBalance === "number") {
+        const soldAmount = postBalance - preBalance;
+        if (soldAmount > 0) {
+          const fee = calculateTransactionFee(BigInt(soldAmount));
+          const feeTx = createFeeInstruction(seller.publicKey, fee);
+          await sendTx(
+            this.connection,
+            feeTx,
+            seller.publicKey,
+            [seller],
+            priorityFees,
+            commitment,
+            finality,
+          );
+        }
       }
     }
 

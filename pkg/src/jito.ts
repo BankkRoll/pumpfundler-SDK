@@ -3,8 +3,9 @@ import {
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  TransactionInstruction,
   TransactionMessage,
-  type VersionedTransaction,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   type SearcherClient,
@@ -168,11 +169,21 @@ async function build_bundle(
 
   const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
   const sdkFeeTx = createFeeInstruction(keypair.publicKey, sdkFee);
+
+  // Fix: Ensure that sdkFeeTx.instructions[0] is not undefined
+  const feeInstruction: TransactionInstruction =
+    sdkFeeTx.instructions[0] ||
+    new TransactionInstruction({
+      keys: [],
+      programId: PublicKey.default,
+      data: Buffer.from([]),
+    });
+
   const sdkFeeVersionedTx = new VersionedTransaction(
     new TransactionMessage({
       payerKey: keypair.publicKey,
       recentBlockhash: resp.blockhash,
-      instructions: [sdkFeeTx.instructions[0]],
+      instructions: [feeInstruction],
     }).compileToV0Message(),
   );
   sdkFeeVersionedTx.sign([keypair]);

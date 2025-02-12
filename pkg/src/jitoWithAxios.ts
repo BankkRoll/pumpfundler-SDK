@@ -5,6 +5,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
+  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -83,6 +84,15 @@ export const jitoWithAxios = async (
     const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
     const sdkFeeTx = createFeeInstruction(payer.publicKey, sdkFee);
 
+    // Ensure that sdkFeeTx.instructions[0] is not undefined
+    const feeInstruction: TransactionInstruction =
+      sdkFeeTx.instructions[0] ||
+      new TransactionInstruction({
+        keys: [],
+        programId: PublicKey.default,
+        data: Buffer.from([]),
+      });
+
     const jitTipTxFeeMessage = new TransactionMessage({
       payerKey: payer.publicKey,
       recentBlockhash: latestBlockhash.blockhash,
@@ -92,7 +102,7 @@ export const jitoWithAxios = async (
           toPubkey: jitoFeeWallet,
           lamports: config.jitoFee,
         }),
-        sdkFeeTx.instructions[0],
+        feeInstruction,
       ],
     }).compileToV0Message();
 
