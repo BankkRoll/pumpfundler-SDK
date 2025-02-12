@@ -1,3 +1,5 @@
+# 🚨NOT READY🚨
+
 # pumpfundler-sdk
 
 pumpfundler-sdk is a powerful TypeScript library for interacting with the PumpFun protocol on the Solana blockchain. It provides comprehensive functionality for bundling token creation, trading, and managing bonding curves with advanced features like MEV protection through Jito integration.
