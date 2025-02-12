@@ -1,0 +1,88 @@
+---
+title: "Introduction"
+description: "Get started with the Pumpfundler SDK for Solana blockchain development"
+---
+
+# Introduction to Pumpfundler SDK
+
+Welcome to the Pumpfundler SDK documentation! This powerful TypeScript library is designed to simplify your interaction with the PumpFun protocol and bundles on the Solana blockchain. Whether you're creating tokens, managing bonding curves, or integrating advanced features like MEV protection, Pumpfundler SDK has got you covered.
+
+## What is Pumpfundler?
+
+Pumpfundler is a revolutionary protocol on the Solana blockchain that enables the creation and management of tokens with customizable bonding curves, as well as efficient bundling of transactions. It provides a suite of tools for developers to build innovative DeFi applications with ease.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Token Creation" icon="coins">
+    Easily create and deploy new tokens on the Solana blockchain.
+  </Card>
+  <Card title="Bonding Curve Management" icon="chart-line">
+    Implement and manage sophisticated bonding curve mechanisms for your tokens.
+  </Card>
+  <Card title="Transaction Bundling" icon="layer-group">
+    Efficiently bundle multiple transactions for atomic execution.
+  </Card>
+  <Card title="MEV Protection" icon="shield-halved">
+    Integrate with Jito for enhanced MEV protection and efficient transaction processing.
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+To begin using the Pumpfundler SDK, follow these steps:
+
+<Steps>
+  <Step title="Install the SDK">
+    Run the following command in your project directory:
+    ```bash
+    npm install pumpfundler-sdk
+    ```
+  </Step>
+  <Step title="Configure your environment">
+    Set up your Solana connection and wallet:
+    ```typescript
+    import { Connection, Keypair } from "@solana/web3.js";
+    import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+
+    const connection = new Connection("https://api.mainnet-beta.solana.com");
+    const wallet = new Wallet(Keypair.generate());
+    ```
+  </Step>
+  <Step title="Initialize the SDK">
+    Create a PumpfundlerSDK instance:
+    ```typescript
+    import { PumpfundlerSDK, PumpfundlerConfig } from "pumpfundler-sdk";
+
+    const config: PumpfundlerConfig = {
+      connection,
+      jitoFee: 1000000, // 0.001 SOL
+      commitmentLevel: "confirmed",
+      blockEngineUrl: "https://your-jito-block-engine-url.com",
+      jitoAuthKeypair: "your-jito-auth-keypair-base58",
+    };
+
+    const provider = new AnchorProvider(connection, wallet, {});
+    const sdk = new PumpfundlerSDK(provider, config);
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+Now that you have an overview of the Pumpfundler SDK, explore the following sections to dive deeper:
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Learn how to install the Pumpfundler SDK in your project.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Understand the configuration options available for the SDK.
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Dive into the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+  <Card title="Token Operations" icon="coins" href="/token-operations/creation">
+    Explore token creation and management features.
+  </Card>
+</CardGroup>

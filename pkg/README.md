@@ -41,11 +41,11 @@ const connection = new Connection("https://api.mainnet-beta.solana.com");
 const wallet = new Wallet(Keypair.generate());
 
 const config: PumpFunConfig = {
-connection,
-jitoFee: 1000000, // 0.001 SOL
-commitmentLevel: "confirmed",
-blockEngineUrl: "https://your-jito-block-engine-url.com",
-jitoAuthKeypair: "your-jito-auth-keypair-base58",
+  connection,
+  jitoFee: 1000000, // 0.001 SOL
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+  jitoAuthKeypair: "your-jito-auth-keypair-base58",
 };
 
 const provider = new AnchorProvider(connection, wallet, {});
@@ -128,19 +128,19 @@ const creator = Keypair.generate();
 const mint = Keypair.generate();
 const buyers = [Keypair.generate(), Keypair.generate()];
 const metadata: CreateTokenMetadata = {
-name: "My Token",
-symbol: "MTK",
-description: "A test token",
-file: new Blob(["dummy image data"]),
+  name: "My Token",
+  symbol: "MTK",
+  description: "A test token",
+  file: new Blob(["dummy image data"]),
 };
 
 const result = await sdk.createAndBuy(
-creator,
-mint,
-buyers,
-metadata,
-BigInt(1_000_000_000), // 1 SOL
-300n, // 3% slippage
+  creator,
+  mint,
+  buyers,
+  metadata,
+  BigInt(1_000_000_000), // 1 SOL
+  300n, // 3% slippage
 );
 
 console.log("Token created and bought:", result);
@@ -162,13 +162,13 @@ async createTokenMetadata(create: CreateTokenMetadata): Promise<TokenMetadata>
 
 ```typescript
 const metadata: CreateTokenMetadata = {
-name: "My Token",
-symbol: "MTK",
-description: "A test token",
-file: new Blob(["dummy image data"]),
-twitter: "https://twitter.com/mytoken",
-telegram: "https://t.me/mytoken",
-website: "https://mytoken.com",
+  name: "My Token",
+  symbol: "MTK",
+  description: "A test token",
+  file: new Blob(["dummy image data"]),
+  twitter: "https://twitter.com/mytoken",
+  telegram: "https://t.me/mytoken",
+  website: "https://mytoken.com",
 };
 
 const tokenMetadata = await sdk.createTokenMetadata(metadata);
@@ -209,10 +209,10 @@ finality: Finality = DEFAULT_FINALITY,
 const buyer = Keypair.generate();
 const mint = new PublicKey("...");
 const buyResult = await sdk.buy(
-buyer,
-mint,
-BigInt(500_000_000), // 0.5 SOL
-300n, // 3% slippage
+  buyer,
+  mint,
+  BigInt(500_000_000), // 0.5 SOL
+  300n, // 3% slippage
 );
 
 console.log("Buy result:", buyResult);
@@ -250,10 +250,10 @@ finality: Finality = DEFAULT_FINALITY,
 const seller = Keypair.generate();
 const mint = new PublicKey("...");
 const sellResult = await sdk.sell(
-seller,
-mint,
-BigInt(1_000_000), // 1 million tokens
-300n, // 3% slippage
+  seller,
+  mint,
+  BigInt(1_000_000), // 1 million tokens
+  300n, // 3% slippage
 );
 
 console.log("Sell result:", sellResult);
@@ -302,11 +302,11 @@ getFinalMarketCapSOL(feeBasisPoints: bigint): bigint
 ```typescript
 const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
 if (bondingCurveAccount) {
-const buyPrice = bondingCurveAccount.getBuyPrice(BigInt(1_000_000_000)); // 1 SOL
-console.log("Buy price for 1 SOL:", buyPrice.toString());
+  const buyPrice = bondingCurveAccount.getBuyPrice(BigInt(1_000_000_000)); // 1 SOL
+  console.log("Buy price for 1 SOL:", buyPrice.toString());
 
-const marketCap = bondingCurveAccount.getMarketCapSOL();
-console.log("Current market cap in SOL:", marketCap.toString());
+  const marketCap = bondingCurveAccount.getMarketCapSOL();
+  console.log("Current market cap in SOL:", marketCap.toString());
 }
 ```
 
@@ -380,9 +380,9 @@ Supported event types: `createEvent`, `tradeEvent`, `completeEvent`, `setParamsE
 
 ```typescript
 const eventId = sdk.addEventListener("tradeEvent", (event, slot, signature) => {
-console.log("Trade event:", event);
-console.log("Slot:", slot);
-console.log("Signature:", signature);
+  console.log("Trade event:", event);
+  console.log("Slot:", slot);
+  console.log("Signature:", signature);
 });
 
 // Later, to remove the event listener:
@@ -406,9 +406,9 @@ import { jitoWithAxios } from "pumpfun-sdk";
 
 const result = await jitoWithAxios(transactions, payer, sdk.config);
 if (result.confirmed) {
-console.log("Jito bundle confirmed:", result.jitoTxsignature);
+  console.log("Jito bundle confirmed:", result.jitoTxsignature);
 } else {
-console.error("Jito bundle failed");
+  console.error("Jito bundle failed");
 }
 ```
 
@@ -428,10 +428,15 @@ The SDK provides several utility functions for common operations:
 ```typescript
 import { calculateWithSlippageBuy, sendTx } from "pumpfun-sdk";
 
-const amountWithSlippage = calculateWithSlippageBuy(BigInt(1_000_000_000), 300n);
+const amountWithSlippage = calculateWithSlippageBuy(
+  BigInt(1_000_000_000),
+  300n,
+);
 console.log("Amount with 3% slippage:", amountWithSlippage.toString());
 
-const txResult = await sendTx(connection, transaction, payer.publicKey, [payer]);
+const txResult = await sendTx(connection, transaction, payer.publicKey, [
+  payer,
+]);
 console.log("Transaction result:", txResult);
 ```
 
@@ -441,10 +446,10 @@ The SDK uses a `TransactionResult` type to handle the results of transactions:
 
 ```typescript
 type TransactionResult = {
-signature?: string;
-error?: unknown;
-results?: VersionedTransactionResponse;
-success: boolean;
+  signature?: string;
+  error?: unknown;
+  results?: VersionedTransactionResponse;
+  success: boolean;
 };
 ```
 
@@ -455,9 +460,9 @@ Always check the `success` field to determine if a transaction was successful.
 ```typescript
 const result = await sdk.buy(buyer, mint, amount);
 if (result.success) {
-console.log("Transaction successful:", result.signature);
+  console.log("Transaction successful:", result.signature);
 } else {
-console.error("Transaction failed:", result.error);
+  console.error("Transaction failed:", result.error);
 }
 ```
 
@@ -468,24 +473,32 @@ console.error("Transaction failed:", result.error);
 This example demonstrates how to perform buys from multiple wallets:
 
 ```typescript
-async function multiBuyToken(tokenMint: PublicKey, buyers: Keypair[], amounts: bigint[]) {
-const buyPromises = buyers.map((buyer, index) =>
-sdk.buy(
-buyer,
-tokenMint,
-amounts[index],
-300n, // 3% slippage
-)
-);
+async function multiBuyToken(
+  tokenMint: PublicKey,
+  buyers: Keypair[],
+  amounts: bigint[],
+) {
+  const buyPromises = buyers.map((buyer, index) =>
+    sdk.buy(
+      buyer,
+      tokenMint,
+      amounts[index],
+      300n, // 3% slippage
+    ),
+  );
 
-const results = await Promise.all(buyPromises);
-results.forEach((result, index) => {
-console.log(`Buy result for buyer ${index + 1}:`, result);
-});
+  const results = await Promise.all(buyPromises);
+  results.forEach((result, index) => {
+    console.log(`Buy result for buyer ${index + 1}:`, result);
+  });
 }
 
 const buyers = [Keypair.generate(), Keypair.generate(), Keypair.generate()];
-const amounts = [BigInt(1_000_000_000), BigInt(500_000_000), BigInt(750_000_000)];
+const amounts = [
+  BigInt(1_000_000_000),
+  BigInt(500_000_000),
+  BigInt(750_000_000),
+];
 await multiBuyToken(tokenMint, buyers, amounts);
 ```
 
@@ -495,29 +508,44 @@ This example shows how to analyze the bonding curve for a token:
 
 ```typescript
 async function analyzeBondingCurve(tokenMint: PublicKey) {
-const bondingCurveAccount = await sdk.getBondingCurveAccount(tokenMint);
-if (!bondingCurveAccount) {
-console.error("Bonding curve not found");
-return;
-}
+  const bondingCurveAccount = await sdk.getBondingCurveAccount(tokenMint);
+  if (!bondingCurveAccount) {
+    console.error("Bonding curve not found");
+    return;
+  }
 
-const globalAccount = await sdk.getGlobalAccount();
+  const globalAccount = await sdk.getGlobalAccount();
 
-console.log("Virtual Token Reserves:", bondingCurveAccount.virtualTokenReserves.toString());
-console.log("Virtual SOL Reserves:", bondingCurveAccount.virtualSolReserves.toString());
-console.log("Real Token Reserves:", bondingCurveAccount.realTokenReserves.toString());
-console.log("Real SOL Reserves:", bondingCurveAccount.realSolReserves.toString());
+  console.log(
+    "Virtual Token Reserves:",
+    bondingCurveAccount.virtualTokenReserves.toString(),
+  );
+  console.log(
+    "Virtual SOL Reserves:",
+    bondingCurveAccount.virtualSolReserves.toString(),
+  );
+  console.log(
+    "Real Token Reserves:",
+    bondingCurveAccount.realTokenReserves.toString(),
+  );
+  console.log(
+    "Real SOL Reserves:",
+    bondingCurveAccount.realSolReserves.toString(),
+  );
 
-const buyAmount = BigInt(1e9); // 1 SOL
-const buyPrice = bondingCurveAccount.getBuyPrice(buyAmount);
-console.log(`Buy Price for 1 SOL: ${buyPrice} tokens`);
+  const buyAmount = BigInt(1e9); // 1 SOL
+  const buyPrice = bondingCurveAccount.getBuyPrice(buyAmount);
+  console.log(`Buy Price for 1 SOL: ${buyPrice} tokens`);
 
-const sellAmount = BigInt(1e6); // 1 million tokens
-const sellPrice = bondingCurveAccount.getSellPrice(sellAmount, globalAccount.feeBasisPoints);
-console.log(`Sell Price for 1M tokens: ${sellPrice} lamports`);
+  const sellAmount = BigInt(1e6); // 1 million tokens
+  const sellPrice = bondingCurveAccount.getSellPrice(
+    sellAmount,
+    globalAccount.feeBasisPoints,
+  );
+  console.log(`Sell Price for 1M tokens: ${sellPrice} lamports`);
 
-const marketCap = bondingCurveAccount.getMarketCapSOL();
-console.log("Market Cap in SOL:", marketCap.toString());
+  const marketCap = bondingCurveAccount.getMarketCapSOL();
+  console.log("Market Cap in SOL:", marketCap.toString());
 }
 
 analyzeBondingCurve(tokenMint).catch(console.error);
@@ -529,45 +557,47 @@ The SDK provides comprehensive TypeScript types for all its functionality. Here 
 
 ```typescript
 import {
-CreateTokenMetadata,
-TokenMetadata,
-CreateEvent,
-TradeEvent,
-CompleteEvent,
-SetParamsEvent,
-PumpFunEventHandlers,
-PumpFunEventType,
-PriorityFee,
-TransactionResult,
-BuyResult,
-SellResult
+  CreateTokenMetadata,
+  TokenMetadata,
+  CreateEvent,
+  TradeEvent,
+  CompleteEvent,
+  SetParamsEvent,
+  PumpFunEventHandlers,
+  PumpFunEventType,
+  PriorityFee,
+  TransactionResult,
+  BuyResult,
+  SellResult,
 } from "pumpfun-sdk";
 
 // Example usage of types
 const metadata: CreateTokenMetadata = {
-name: "My Token",
-symbol: "MTK",
-description: "A sample token",
-file: new Blob(["dummy image"]),
+  name: "My Token",
+  symbol: "MTK",
+  description: "A sample token",
+  file: new Blob(["dummy image"]),
 };
 
-const eventHandler: PumpFunEventHandlers["tradeEvent"] = (event: TradeEvent) => {
-console.log("Trade event:", event);
+const eventHandler: PumpFunEventHandlers["tradeEvent"] = (
+  event: TradeEvent,
+) => {
+  console.log("Trade event:", event);
 };
 
 const priorityFee: PriorityFee = {
-unitLimit: 1_000_000,
-unitPrice: 1000,
+  unitLimit: 1_000_000,
+  unitPrice: 1000,
 };
 
 // These types are used internally in the SDK
 type BuyResult = {
-token_amount: bigint;
-sol_amount: bigint;
+  token_amount: bigint;
+  sol_amount: bigint;
 };
 
 type SellResult = {
-token_amount: bigint;
-sol_amount: bigint;
+  token_amount: bigint;
+  sol_amount: bigint;
 };
 ```

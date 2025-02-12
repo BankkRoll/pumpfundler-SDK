@@ -1,0 +1,94 @@
+---
+title: "Installation"
+description: "Learn how to install and set up Pumpfundler SDK in your project"
+---
+
+# Installing Pumpfundler SDK
+
+This guide will walk you through the process of installing Pumpfundler SDK in your project. The SDK is available as an npm package, making it easy to integrate into your TypeScript or JavaScript projects.
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+<Check>Node.js (version 14 or later)</Check>
+<Check>npm (usually comes with Node.js)</Check>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Open your terminal">
+    Navigate to your project directory.
+  </Step>
+  <Step title="Install Pumpfundler SDK">
+    Run the following command to install Pumpfundler SDK:
+    ```bash
+    npm install pumpfundler-sdk
+    ```
+    This command will download and install the latest version of Pumpfundler SDK and its dependencies.
+  </Step>
+  <Step title="Import the SDK">
+    Once the installation is complete, you can import the SDK in your TypeScript or JavaScript files:
+    ```typescript
+    import { PumpfundlerSDK } from 'pumpfundler-sdk';
+    ```
+  </Step>
+</Steps>
+
+## Verifying the Installation
+
+To verify that the SDK has been installed correctly, you can create a simple test file:
+
+```typescript
+import { PumpfundlerSDK } from 'pumpfundler-sdk';
+
+console.log('Pumpfundler SDK version:', PumpfundlerSDK.VERSION);
+```
+
+Run this file using Node.js, and you should see the version of the installed SDK printed to the console.
+
+## Additional Dependencies
+
+Pumpfundler SDK has peer dependencies on the following packages:
+
+<CardGroup cols={2}>
+  <Card title="@solana/web3.js" icon="cube">
+    Solana's JavaScript API
+  </Card>
+  <Card title="@coral-xyz/anchor" icon="anchor">
+    Solana's Sealevel runtime framework
+  </Card>
+</CardGroup>
+
+If you haven't already installed these, you can do so by running:
+
+```bash
+npm install @solana/web3.js @coral-xyz/anchor
+```
+
+## Troubleshooting
+
+<Accordion title="Installation fails with dependency errors">
+  If you encounter dependency-related errors during installation, try the following:
+  1. Clear your npm cache: `npm cache clean --force`
+  2. Delete the `node_modules` folder and `package-lock.json` file
+  3. Run `npm install` again
+</Accordion>
+
+<Accordion title="Version conflicts">
+  If you have version conflicts with other packages, you may need to use a package manager that supports peer dependency resolution, such as yarn or pnpm.
+</Accordion>
+
+## Next Steps
+
+Now that you have successfully installed Pumpfundler SDK, you're ready to start using it in your project. Here are some next steps:
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn how to configure the SDK for your specific needs.
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Understand the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+</CardGroup>
+

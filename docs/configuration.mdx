@@ -1,0 +1,145 @@
+---
+title: "Configuration"
+description: "Learn how to configure Pumpfundler SDK for your Solana project"
+---
+
+# Configuring Pumpfundler SDK
+
+Proper configuration is crucial for the optimal performance of Pumpfundler SDK. This guide will walk you through the process of setting up and configuring the SDK for your Solana project.
+
+## Basic Configuration
+
+To start using Pumpfundler SDK, you need to create a `PumpfundlerConfig` object and initialize the SDK. Here's a basic example:
+
+```typescript
+import { Connection, Keypair } from "@solana/web3.js";
+import { PumpfundlerSDK, PumpfundlerConfig } from "pumpfundler-sdk";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const wallet = new Wallet(Keypair.generate());
+
+const config: PumpfundlerConfig = {
+  connection,
+  jitoFee: 1000000, // 0.001 SOL
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+  jitoAuthKeypair: "your-jito-auth-keypair-base58",
+};
+
+const provider = new AnchorProvider(connection, wallet, {});
+const sdk = new PumpfundlerSDK(provider, config);
+```
+
+## Configuration Options
+
+Let's break down the configuration options:
+
+<Accordion title="connection">
+  This is a Solana `Connection` object that specifies which Solana cluster to connect to. You can use mainnet, testnet, or devnet depending on your development stage.
+
+  ```typescript
+  const connection = new Connection("https://api.mainnet-beta.solana.com");
+  ```
+</Accordion>
+
+<Accordion title="jitoFee">
+  The fee (in lamports) to be paid for Jito MEV protection. In the example, it's set to 0.001 SOL (1,000,000 lamports).
+
+  ```typescript
+  jitoFee: 1000000, // 0.001 SOL
+  ```
+</Accordion>
+
+<Accordion title="commitmentLevel">
+  Specifies the commitment level for transactions. Options include:
+  - `"processed"`
+  - `"confirmed"`
+  - `"finalized"`
+
+  ```typescript
+  commitmentLevel: "confirmed",
+  ```
+</Accordion>
+
+<Accordion title="blockEngineUrl">
+  The URL of the Jito block engine. This is required for MEV protection features.
+
+  ```typescript
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+  ```
+</Accordion>
+
+<Accordion title="jitoAuthKeypair">
+  The base58-encoded private key for Jito authentication. This is required for secure communication with the Jito block engine.
+
+  ```typescript
+  jitoAuthKeypair: "your-jito-auth-keypair-base58",
+  ```
+</Accordion>
+
+## Advanced Configuration
+
+For more advanced use cases, you can also configure:
+
+### Custom RPC Endpoints
+
+If you're using a custom RPC endpoint, you can specify it when creating the `Connection`:
+
+```typescript
+const connection = new Connection("https://your-custom-rpc-endpoint.com");
+```
+
+### Wallet Configuration
+
+The example uses a generated keypair for demonstration. In a real application, you'd typically use a wallet adapter:
+
+```typescript
+import { useWallet } from '@solana/wallet-adapter-react';
+
+// Inside your component
+const wallet = useWallet();
+```
+
+### Provider Options
+
+You can pass additional options to the `AnchorProvider`:
+
+```typescript
+const provider = new AnchorProvider(connection, wallet, {
+  preflightCommitment: "processed",
+  commitment: "confirmed",
+});
+```
+
+## Environment-Specific Configuration
+
+It's a good practice to use different configurations for development, testing, and production environments. You can use environment variables to manage this:
+
+```typescript
+const config: PumpfundlerConfig = {
+  connection: new Connection(process.env.SOLANA_RPC_URL),
+  jitoFee: process.env.JITO_FEE ? parseInt(process.env.JITO_FEE) : 1000000,
+  commitmentLevel: process.env.COMMITMENT_LEVEL || "confirmed",
+  blockEngineUrl: process.env.JITO_BLOCK_ENGINE_URL,
+  jitoAuthKeypair: process.env.JITO_AUTH_KEYPAIR,
+};
+```
+
+## Configuration Best Practices
+
+<Check>Use environment variables for sensitive information like RPC URLs and auth keys</Check>
+<Check>Set appropriate commitment levels based on your application's needs</Check>
+<Check>Adjust Jito fees based on network congestion and your MEV protection requirements</Check>
+<Check>Use custom RPC endpoints for better performance and reliability in production</Check>
+
+## Next Steps
+
+Now that you've configured Pumpfundler SDK, you're ready to start using its features:
+
+<CardGroup cols={1}>
+  <Card title="Core Concepts" icon="book" href="/core-concepts/pumpfundler-sdk">
+    Understand the fundamental concepts of the Pumpfundler SDK.
+  </Card>
+</CardGroup>
+

@@ -1,0 +1,35 @@
+{
+  "name": "pumpfundler-sdk",
+  "version": "0.0.1",
+  "description": "A TypeScript SDK for interacting with PumpFun and bundles",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "format": "prettier --write .",
+    "build": "tsc",
+    "test": "jest",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "BankkRoll",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.28.0",
+    "@coral-xyz/borsh": "^0.30.1",
+    "@solana/spl-token": "^0.3.8",
+    "@solana/web3.js": "^1.78.4",
+    "axios": "^1.4.0",
+    "bn.js": "^5.2.1",
+    "bs58": "^5.0.0",
+    "jito-ts": "^2.1.0",
+    "undici": "^5.22.1"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/jest": "^29.5.3",
+    "@types/node": "^20.4.5",
+    "jest": "^29.6.2",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.1.6"
+  }
+}
