@@ -1,5 +1,4 @@
-// src/pumpfun/events.ts
-import {
+import type {
   CompleteEvent,
   CreateEvent,
   SetParamsEvent,
@@ -8,6 +7,17 @@ import {
 
 import { PublicKey } from "@solana/web3.js";
 
+/**
+ * @fileoverview Event conversion functions for the PumpFundlerSDK
+ * This file contains utility functions to convert raw event data into
+ * strongly-typed event objects with proper PublicKey and BigInt conversions.
+ */
+
+/**
+ * Converts a raw CreateEvent into a properly typed CreateEvent object
+ * @param {CreateEvent} event - The raw create event data
+ * @returns {CreateEvent} A new CreateEvent object with properly converted fields
+ */
 export function toCreateEvent(event: CreateEvent): CreateEvent {
   return {
     name: event.name,
@@ -19,6 +29,11 @@ export function toCreateEvent(event: CreateEvent): CreateEvent {
   };
 }
 
+/**
+ * Converts a raw CompleteEvent into a properly typed CompleteEvent object
+ * @param {CompleteEvent} event - The raw complete event data
+ * @returns {CompleteEvent} A new CompleteEvent object with properly converted fields
+ */
 export function toCompleteEvent(event: CompleteEvent): CompleteEvent {
   return {
     user: new PublicKey(event.user),
@@ -28,6 +43,11 @@ export function toCompleteEvent(event: CompleteEvent): CompleteEvent {
   };
 }
 
+/**
+ * Converts a raw TradeEvent into a properly typed TradeEvent object
+ * @param {TradeEvent} event - The raw trade event data
+ * @returns {TradeEvent} A new TradeEvent object with properly converted fields
+ */
 export function toTradeEvent(event: TradeEvent): TradeEvent {
   return {
     mint: new PublicKey(event.mint),
@@ -43,6 +63,11 @@ export function toTradeEvent(event: TradeEvent): TradeEvent {
   };
 }
 
+/**
+ * Converts a raw SetParamsEvent into a properly typed SetParamsEvent object
+ * @param {SetParamsEvent} event - The raw set params event data
+ * @returns {SetParamsEvent} A new SetParamsEvent object with properly converted fields
+ */
 export function toSetParamsEvent(event: SetParamsEvent): SetParamsEvent {
   return {
     feeRecipient: new PublicKey(event.feeRecipient),

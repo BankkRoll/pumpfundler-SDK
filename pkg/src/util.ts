@@ -1,37 +1,122 @@
-// src/pumpfun/util.ts
-
 import {
-  Commitment,
+  type Commitment,
   ComputeBudgetProgram,
-  Connection,
-  Finality,
-  Keypair,
+  type Connection,
+  type Finality,
+  type Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   SendTransactionError,
+  SystemProgram,
   Transaction,
   TransactionMessage,
   VersionedTransaction,
-  VersionedTransactionResponse,
+  type VersionedTransactionResponse,
 } from "@solana/web3.js";
-import { PriorityFee, TransactionResult } from "./types";
+import type { PriorityFee, TransactionResult } from "./types";
 
+/**
+ * @fileoverview Utility functions and constants for the PumpFundlerSDK
+ * This file contains various helper functions for transaction handling,
+ * fee calculations, and Solana blockchain interactions.
+ */
+
+/**
+ * Default commitment level for transactions
+ * @constant {Commitment}
+ */
 export const DEFAULT_COMMITMENT: Commitment = "finalized";
+
+/**
+ * Default finality for transactions
+ * @constant {Finality}
+ */
 export const DEFAULT_FINALITY: Finality = "finalized";
 
+/**
+ * Fee for creating a new token (0.05 SOL)
+ * @constant {bigint}
+ */
+export const CREATION_FEE = BigInt(0.05 * LAMPORTS_PER_SOL);
+
+/**
+ * Transaction fee percentage (1%)
+ * @constant {number}
+ */
+export const TRANSACTION_FEE_PERCENT = 0.01;
+
+/**
+ * Public key of the fee recipient
+ * @constant {PublicKey}
+ * @todo Replace with actual fee wallet address
+ */
+export const FEE_RECIPIENT = new PublicKey("YOUR_FEE_RECIPIENT_ADDRESS");
+
+/**
+ * Calculates the buy amount with slippage
+ * @param {bigint} amount - The original amount
+ * @param {bigint} basisPoints - The slippage in basis points
+ * @returns {bigint} The amount adjusted for slippage
+ */
 export const calculateWithSlippageBuy = (
   amount: bigint,
   basisPoints: bigint,
-) => {
+): bigint => {
   return amount + (amount * basisPoints) / 10000n;
 };
 
+/**
+ * Calculates the sell amount with slippage
+ * @param {bigint} amount - The original amount
+ * @param {bigint} basisPoints - The slippage in basis points
+ * @returns {bigint} The amount adjusted for slippage
+ */
 export const calculateWithSlippageSell = (
   amount: bigint,
   basisPoints: bigint,
-) => {
+): bigint => {
   return amount - (amount * basisPoints) / 10000n;
 };
 
+/**
+ * Calculates the transaction fee based on the amount
+ * @param {bigint} amount - The transaction amount
+ * @returns {bigint} The calculated fee
+ */
+export const calculateTransactionFee = (amount: bigint): bigint => {
+  return BigInt(Math.floor(Number(amount) * TRANSACTION_FEE_PERCENT));
+};
+
+/**
+ * Creates a fee transfer instruction
+ * @param {PublicKey} payer - The public key of the fee payer
+ * @param {bigint} amount - The fee amount
+ * @returns {Transaction} A transaction containing the fee transfer instruction
+ */
+export const createFeeInstruction = (
+  payer: PublicKey,
+  amount: bigint,
+): Transaction => {
+  return new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: payer,
+      toPubkey: FEE_RECIPIENT,
+      lamports: amount,
+    }),
+  );
+};
+
+/**
+ * Sends a transaction to the Solana network
+ * @param {Connection} connection - The Solana connection object
+ * @param {Transaction} tx - The transaction to send
+ * @param {PublicKey} payer - The public key of the transaction payer
+ * @param {Keypair[]} signers - Array of signers for the transaction
+ * @param {PriorityFee} [priorityFees] - Optional priority fees
+ * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+ * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+ * @returns {Promise<TransactionResult>} The result of the transaction
+ */
 export async function sendTx(
   connection: Connection,
   tx: Transaction,
@@ -41,7 +126,7 @@ export async function sendTx(
   commitment: Commitment = DEFAULT_COMMITMENT,
   finality: Finality = DEFAULT_FINALITY,
 ): Promise<TransactionResult> {
-  let newTx = new Transaction();
+  const newTx = new Transaction();
 
   if (priorityFees) {
     const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
@@ -54,8 +139,13 @@ export async function sendTx(
     newTx.add(modifyComputeUnits);
     newTx.add(addPriorityFee);
   }
+
+  // Add fee instruction
+  const fee = calculateTransactionFee(tx.instructions[0].data);
+  newTx.add(createFeeInstruction(payer, fee));
+
   newTx.add(tx);
-  let versionedTx = await buildVersionedTx(
+  const versionedTx = await buildVersionedTx(
     connection,
     payer,
     newTx,
@@ -70,7 +160,7 @@ export async function sendTx(
     });
     console.log("sig:", `https://solscan.io/tx/${sig}`);
 
-    let txResult = await getTxDetails(connection, sig, commitment, finality);
+    const txResult = await getTxDetails(connection, sig, commitment, finality);
     if (!txResult) {
       return {
         success: false,
@@ -84,7 +174,8 @@ export async function sendTx(
     };
   } catch (e) {
     if (e instanceof SendTransactionError) {
-      let ste = e as SendTransactionError;
+      const ste = e as SendTransactionError;
+      // TODO: Handle SendTransactionError specifically
     } else {
       console.error(e);
     }
@@ -95,6 +186,17 @@ export async function sendTx(
   }
 }
 
+/**
+ * Builds a versioned transaction
+ * @param {Connection} connection - The Solana connection object
+ * @param {Transaction} tx - The transaction to build
+ * @param {PublicKey} payer - The public key of the transaction payer
+ * @param {Keypair[]} signers - Array of signers for the transaction
+ * @param {PriorityFee} [priorityFees] - Optional priority fees
+ * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+ * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+ * @returns {Promise<VersionedTransaction>} The built versioned transaction
+ */
 export async function buildTx(
   connection: Connection,
   tx: Transaction,
@@ -104,7 +206,7 @@ export async function buildTx(
   commitment: Commitment = DEFAULT_COMMITMENT,
   finality: Finality = DEFAULT_FINALITY,
 ): Promise<VersionedTransaction> {
-  let newTx = new Transaction();
+  const newTx = new Transaction();
 
   if (priorityFees) {
     const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
@@ -117,8 +219,13 @@ export async function buildTx(
     newTx.add(modifyComputeUnits);
     newTx.add(addPriorityFee);
   }
+
+  // Add fee instruction
+  const fee = calculateTransactionFee(tx.instructions[0].data);
+  newTx.add(createFeeInstruction(payer, fee));
+
   newTx.add(tx);
-  let versionedTx = await buildVersionedTx(
+  const versionedTx = await buildVersionedTx(
     connection,
     payer,
     newTx,
@@ -128,6 +235,14 @@ export async function buildTx(
   return versionedTx;
 }
 
+/**
+ * Builds a versioned transaction message
+ * @param {Connection} connection - The Solana connection object
+ * @param {PublicKey} payer - The public key of the transaction payer
+ * @param {Transaction} tx - The transaction to build
+ * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+ * @returns {Promise<VersionedTransaction>} The built versioned transaction
+ */
 export const buildVersionedTx = async (
   connection: Connection,
   payer: PublicKey,
@@ -136,7 +251,7 @@ export const buildVersionedTx = async (
 ): Promise<VersionedTransaction> => {
   const blockHash = (await connection.getLatestBlockhash(commitment)).blockhash;
 
-  let messageV0 = new TransactionMessage({
+  const messageV0 = new TransactionMessage({
     payerKey: payer,
     recentBlockhash: blockHash,
     instructions: tx.instructions,
@@ -145,6 +260,14 @@ export const buildVersionedTx = async (
   return new VersionedTransaction(messageV0);
 };
 
+/**
+ * Retrieves transaction details
+ * @param {Connection} connection - The Solana connection object
+ * @param {string} sig - The transaction signature
+ * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+ * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+ * @returns {Promise<VersionedTransactionResponse | null>} The transaction details
+ */
 export const getTxDetails = async (
   connection: Connection,
   sig: string,
@@ -167,8 +290,14 @@ export const getTxDetails = async (
   });
 };
 
+/**
+ * Generates a random integer between min and max (inclusive)
+ * @param {number} min - The minimum value
+ * @param {number} max - The maximum value
+ * @returns {number} A random integer between min and max
+ */
 export const getRandomInt = (min: number, max: number): number => {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min; // The maximum is inclusive, the minimum is inclusive
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 };

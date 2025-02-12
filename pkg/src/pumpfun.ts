@@ -20,11 +20,14 @@ import type {
   TransactionResult,
 } from "./types";
 import {
+  CREATION_FEE,
   DEFAULT_COMMITMENT,
   DEFAULT_FINALITY,
   buildTx,
+  calculateTransactionFee,
   calculateWithSlippageBuy,
   calculateWithSlippageSell,
+  createFeeInstruction,
   getRandomInt,
   sendTx,
 } from "./util";
@@ -47,6 +50,12 @@ import { BondingCurveAccount } from "./bondingCurveAccount";
 import { GlobalAccount } from "./globalAccount";
 import { jitoWithAxios } from "./jitoWithAxios";
 
+/**
+ * @fileoverview PumpFundlerSDK class implementation
+ * This file contains the main SDK class for interacting with the PumpFun protocol,
+ * including methods for creating tokens, buying, selling, and managing various aspects of the protocol.
+ */
+
 const PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 const MPL_TOKEN_METADATA_PROGRAM_ID =
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
@@ -58,6 +67,10 @@ export const METADATA_SEED = "metadata";
 
 export const DEFAULT_DECIMALS = 6;
 
+/**
+ * Configuration interface for PumpFundlerSDK
+ * @interface PumpFundlerConfig
+ */
 interface PumpFundlerConfig {
   connection: Connection;
   jitoFee: number;
@@ -66,21 +79,38 @@ interface PumpFundlerConfig {
   jitoAuthKeypair: string;
 }
 
-//|||||||||||||||||||||||||||||||||||||||||\\
-//                   TODO                    \\
-//________________NOT FINISHED_________________\\
-
+/**
+ * Main SDK class for interacting with the PumpFun protocol
+ */
 export class PumpFundlerSDK {
-  public program: Program<PumpFun>; // TODO: Fix
+  public program: Program<PumpFun>; // TODO: Fix type
   public connection: Connection;
   private config: PumpFundlerConfig;
 
+  /**
+   * Creates an instance of PumpFundlerSDK
+   * @param {AnchorProvider} provider - The Anchor provider
+   * @param {PumpFundlerConfig} config - The SDK configuration
+   */
   constructor(provider: AnchorProvider, config: PumpFundlerConfig) {
-    this.program = new Program<PumpFun>(IDL as PumpFun, provider); // TODO: Fix
+    this.program = new Program<PumpFun>(IDL as PumpFun, provider); // TODO: Fix type assertion
     this.connection = config.connection;
     this.config = config;
   }
 
+  /**
+   * Creates a token and executes buy orders
+   * @param {Keypair} creator - The creator's keypair
+   * @param {Keypair} mint - The mint keypair
+   * @param {Keypair[]} buyers - Array of buyer keypairs
+   * @param {CreateTokenMetadata} createTokenMetadata - Metadata for token creation
+   * @param {bigint} buyAmountSol - Amount of SOL to buy
+   * @param {bigint} [slippageBasisPoints=300n] - Slippage tolerance in basis points
+   * @param {PriorityFee} [priorityFees] - Optional priority fees
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @returns {Promise<any>} The result of the create and buy operation
+   */
   async createAndBuy(
     creator: Keypair,
     mint: Keypair,
@@ -102,7 +132,10 @@ export class PumpFundlerSDK {
       mint,
     );
 
-    const newTx = new Transaction().add(createTx);
+    // Add creation fee
+    const creationFeeTx = createFeeInstruction(creator.publicKey, CREATION_FEE);
+
+    const newTx = new Transaction().add(creationFeeTx).add(createTx);
     const buyTxs: VersionedTransaction[] = [];
 
     const createVersionedTx = await buildTx(
@@ -165,6 +198,17 @@ export class PumpFundlerSDK {
     return result;
   }
 
+  /**
+   * Executes a buy order
+   * @param {Keypair} buyer - The buyer's keypair
+   * @param {PublicKey} mint - The mint public key
+   * @param {bigint} buyAmountSol - Amount of SOL to buy
+   * @param {bigint} [slippageBasisPoints=500n] - Slippage tolerance in basis points
+   * @param {PriorityFee} [priorityFees] - Optional priority fees
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @returns {Promise<TransactionResult>} The result of the buy transaction
+   */
   async buy(
     buyer: Keypair,
     mint: PublicKey,
@@ -174,17 +218,25 @@ export class PumpFundlerSDK {
     commitment: Commitment = DEFAULT_COMMITMENT,
     finality: Finality = DEFAULT_FINALITY,
   ): Promise<TransactionResult> {
+    const fee = calculateTransactionFee(buyAmountSol);
+    const buyAmountAfterFee = buyAmountSol - fee;
+
     const buyTx = await this.getBuyInstructionsBySolAmount(
       buyer.publicKey,
       mint,
-      buyAmountSol,
+      buyAmountAfterFee,
       slippageBasisPoints,
       commitment,
     );
 
+    // Add fee instruction
+    const feeTx = createFeeInstruction(buyer.publicKey, fee);
+
+    const combinedTx = new Transaction().add(feeTx).add(buyTx);
+
     const buyResults = await sendTx(
       this.connection,
-      buyTx,
+      combinedTx,
       buyer.publicKey,
       [buyer],
       priorityFees,
@@ -194,6 +246,17 @@ export class PumpFundlerSDK {
     return buyResults;
   }
 
+  /**
+   * Executes a sell order
+   * @param {Keypair} seller - The seller's keypair
+   * @param {PublicKey} mint - The mint public key
+   * @param {bigint} sellTokenAmount - Amount of tokens to sell
+   * @param {bigint} [slippageBasisPoints=500n] - Slippage tolerance in basis points
+   * @param {PriorityFee} [priorityFees] - Optional priority fees
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @returns {Promise<TransactionResult>} The result of the sell transaction
+   */
   async sell(
     seller: Keypair,
     mint: PublicKey,
@@ -220,10 +283,38 @@ export class PumpFundlerSDK {
       commitment,
       finality,
     );
+
+    if (sellResults.success && sellResults.results) {
+      const soldAmount =
+        sellResults.results.meta?.postBalances[0] -
+        sellResults.results.meta?.preBalances[0];
+      if (soldAmount) {
+        const fee = calculateTransactionFee(BigInt(soldAmount));
+        const feeTx = createFeeInstruction(seller.publicKey, fee);
+        await sendTx(
+          this.connection,
+          feeTx,
+          seller.publicKey,
+          [seller],
+          priorityFees,
+          commitment,
+          finality,
+        );
+      }
+    }
+
     return sellResults;
   }
 
-  //create token instructions
+  /**
+   * Gets instructions for creating a token
+   * @param {PublicKey} creator - The creator's public key
+   * @param {string} name - The token name
+   * @param {string} symbol - The token symbol
+   * @param {string} uri - The token metadata URI
+   * @param {Keypair} mint - The mint keypair
+   * @returns {Promise<Transaction>} The transaction containing create instructions
+   */
   async getCreateInstructions(
     creator: PublicKey,
     name: string,
@@ -260,6 +351,15 @@ export class PumpFundlerSDK {
       .transaction();
   }
 
+  /**
+   * Gets buy instructions based on SOL amount
+   * @param {PublicKey} buyer - The buyer's public key
+   * @param {PublicKey} mint - The mint public key
+   * @param {bigint} buyAmountSol - Amount of SOL to buy
+   * @param {bigint} [slippageBasisPoints=500n] - Slippage tolerance in basis points
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @returns {Promise<Transaction>} The transaction containing buy instructions
+   */
   async getBuyInstructionsBySolAmount(
     buyer: PublicKey,
     mint: PublicKey,
@@ -291,7 +391,16 @@ export class PumpFundlerSDK {
     );
   }
 
-  //buy
+  /**
+   * Gets buy instructions
+   * @param {PublicKey} buyer - The buyer's public key
+   * @param {PublicKey} mint - The mint public key
+   * @param {PublicKey} feeRecipient - The fee recipient's public key
+   * @param {bigint} amount - Amount of tokens to buy
+   * @param {bigint} solAmount - Amount of SOL to spend
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @returns {Promise<Transaction>} The transaction containing buy instructions
+   */
   async getBuyInstructions(
     buyer: PublicKey,
     mint: PublicKey,
@@ -339,7 +448,15 @@ export class PumpFundlerSDK {
     return transaction;
   }
 
-  //sell
+  /**
+   * Gets sell instructions based on token amount
+   * @param {PublicKey} seller - The seller's public key
+   * @param {PublicKey} mint - The mint public key
+   * @param {bigint} sellTokenAmount - Amount of tokens to sell
+   * @param {bigint} [slippageBasisPoints=500n] - Slippage tolerance in basis points
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @returns {Promise<Transaction>} The transaction containing sell instructions
+   */
   async getSellInstructionsByTokenAmount(
     seller: PublicKey,
     mint: PublicKey,
@@ -376,6 +493,15 @@ export class PumpFundlerSDK {
     );
   }
 
+  /**
+   * Gets sell instructions
+   * @param {PublicKey} seller - The seller's public key
+   * @param {PublicKey} mint - The mint public key
+   * @param {PublicKey} feeRecipient - The fee recipient's public key
+   * @param {bigint} amount - Amount of tokens to sell
+   * @param {bigint} minSolOutput - Minimum SOL output expected
+   * @returns {Promise<Transaction>} The transaction containing sell instructions
+   */
   async getSellInstructions(
     seller: PublicKey,
     mint: PublicKey,
@@ -409,6 +535,12 @@ export class PumpFundlerSDK {
     return transaction;
   }
 
+  /**
+   * Gets the bonding curve account for a given mint
+   * @param {PublicKey} mint - The mint public key
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @returns {Promise<BondingCurveAccount | null>} The bonding curve account or null if not found
+   */
   async getBondingCurveAccount(
     mint: PublicKey,
     commitment: Commitment = DEFAULT_COMMITMENT,
@@ -423,6 +555,12 @@ export class PumpFundlerSDK {
     return BondingCurveAccount.fromBuffer(tokenAccount.data);
   }
 
+  /**
+   * Gets the global account
+   * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
+   * @returns {Promise<GlobalAccount>} The global account
+   * @throws {Error} If the global account is not found
+   */
   async getGlobalAccount(commitment: Commitment = DEFAULT_COMMITMENT) {
     const [globalAccountPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from(GLOBAL_ACCOUNT_SEED)],
@@ -441,6 +579,11 @@ export class PumpFundlerSDK {
     return GlobalAccount.fromBuffer(tokenAccount.data);
   }
 
+  /**
+   * Gets the bonding curve PDA for a given mint
+   * @param {PublicKey} mint - The mint public key
+   * @returns {PublicKey} The bonding curve PDA
+   */
   getBondingCurvePDA(mint: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from(BONDING_CURVE_SEED), mint.toBuffer()],
@@ -448,6 +591,11 @@ export class PumpFundlerSDK {
     )[0];
   }
 
+  /**
+   * Creates token metadata
+   * @param {CreateTokenMetadata} create - The token metadata to create
+   * @returns {Promise<any>} The result of the metadata creation
+   */
   async createTokenMetadata(create: CreateTokenMetadata) {
     const formData = new FormData();
     formData.append("file", create.file);
@@ -483,7 +631,12 @@ export class PumpFundlerSDK {
     return request.json();
   }
 
-  //EVENTS
+  /**
+   * Adds an event listener for a specific event type
+   * @param {PumpFunEventType} eventType - The type of event to listen for
+   * @param {function} callback - The callback function to execute when the event occurs
+   * @returns {number} The event listener id
+   */
   addEventListener<T extends PumpFunEventType>(
     eventType: T,
     callback: (
@@ -537,6 +690,10 @@ export class PumpFundlerSDK {
     );
   }
 
+  /**
+   * Removes an event listener
+   * @param {number} eventId - The id of the event listener to remove
+   */
   removeEventListener(eventId: number) {
     this.program.removeEventListener(eventId);
   }

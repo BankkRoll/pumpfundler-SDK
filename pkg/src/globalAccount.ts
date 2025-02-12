@@ -1,55 +1,63 @@
-// src/pumpfun/globalAccount.ts
-import { Layout, bool, publicKey, struct, u64 } from "@coral-xyz/borsh";
+import { type Layout, bool, publicKey, struct, u64 } from "@coral-xyz/borsh";
+import type { PublicKey } from "@solana/web3.js";
 
-import { PublicKey } from "@solana/web3.js";
+/**
+ * @fileoverview GlobalAccount class for the PumpFundlerSDK
+ * This file contains the implementation of the GlobalAccount class,
+ * which represents the global state and configuration for the PumpFun protocol.
+ */
 
+/**
+ * Represents the global account for the PumpFun protocol
+ */
 export class GlobalAccount {
-  public discriminator: bigint;
-  public initialized: boolean = false;
-  public authority: PublicKey;
-  public feeRecipient: PublicKey;
-  public initialVirtualTokenReserves: bigint;
-  public initialVirtualSolReserves: bigint;
-  public initialRealTokenReserves: bigint;
-  public tokenTotalSupply: bigint;
-  public feeBasisPoints: bigint;
-
+  /**
+   * @param {bigint} discriminator - Unique identifier for the account type
+   * @param {boolean} initialized - Whether the account has been initialized
+   * @param {PublicKey} authority - The authority public key
+   * @param {PublicKey} feeRecipient - The fee recipient public key
+   * @param {bigint} initialVirtualTokenReserves - Initial virtual token reserves
+   * @param {bigint} initialVirtualSolReserves - Initial virtual SOL reserves
+   * @param {bigint} initialRealTokenReserves - Initial real token reserves
+   * @param {bigint} tokenTotalSupply - Total supply of the token
+   * @param {bigint} feeBasisPoints - Fee in basis points
+   */
   constructor(
-    discriminator: bigint,
-    initialized: boolean,
-    authority: PublicKey,
-    feeRecipient: PublicKey,
-    initialVirtualTokenReserves: bigint,
-    initialVirtualSolReserves: bigint,
-    initialRealTokenReserves: bigint,
-    tokenTotalSupply: bigint,
-    feeBasisPoints: bigint,
-  ) {
-    this.discriminator = discriminator;
-    this.initialized = initialized;
-    this.authority = authority;
-    this.feeRecipient = feeRecipient;
-    this.initialVirtualTokenReserves = initialVirtualTokenReserves;
-    this.initialVirtualSolReserves = initialVirtualSolReserves;
-    this.initialRealTokenReserves = initialRealTokenReserves;
-    this.tokenTotalSupply = tokenTotalSupply;
-    this.feeBasisPoints = feeBasisPoints;
-  }
+    public discriminator: bigint,
+    public initialized: boolean,
+    public authority: PublicKey,
+    public feeRecipient: PublicKey,
+    public initialVirtualTokenReserves: bigint,
+    public initialVirtualSolReserves: bigint,
+    public initialRealTokenReserves: bigint,
+    public tokenTotalSupply: bigint,
+    public feeBasisPoints: bigint,
+  ) {}
 
+  /**
+   * Calculates the initial buy price for a given amount of tokens
+   * @param {bigint} amount - The amount of tokens to buy
+   * @returns {bigint} The initial buy price in SOL
+   */
   getInitialBuyPrice(amount: bigint): bigint {
     if (amount <= 0n) {
       return 0n;
     }
 
-    let n = this.initialVirtualSolReserves * this.initialVirtualTokenReserves;
-    let i = this.initialVirtualSolReserves + amount;
-    let r = n / i + 1n;
-    let s = this.initialVirtualTokenReserves - r;
+    const n = this.initialVirtualSolReserves * this.initialVirtualTokenReserves;
+    const i = this.initialVirtualSolReserves + amount;
+    const r = n / i + 1n;
+    const s = this.initialVirtualTokenReserves - r;
     return s < this.initialRealTokenReserves
       ? s
       : this.initialRealTokenReserves;
   }
 
+  /**
+   * Creates a GlobalAccount instance from a buffer
+   * @param {Buffer} buffer - The buffer containing the account data
+   * @returns {GlobalAccount} A new GlobalAccount instance
+   */
   public static fromBuffer(buffer: Buffer): GlobalAccount {
     const structure: Layout<GlobalAccount> = struct([
       u64("discriminator"),
@@ -63,7 +71,7 @@ export class GlobalAccount {
       u64("feeBasisPoints"),
     ]);
 
-    let value = structure.decode(buffer);
+    const value = structure.decode(buffer);
     return new GlobalAccount(
       BigInt(value.discriminator),
       value.initialized,

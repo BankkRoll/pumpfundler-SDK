@@ -3,6 +3,7 @@ import {
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  TransactionMessage,
   type VersionedTransaction,
 } from "@solana/web3.js";
 import {
@@ -12,25 +13,60 @@ import {
 import { Bundle } from "jito-ts/dist/sdk/block-engine/types";
 import base58 from "bs58";
 import { isError } from "jito-ts/dist/sdk/block-engine/utils";
+import { calculateTransactionFee, createFeeInstruction } from "./util";
 
+/**
+ * @fileoverview Jito integration for the PumpFundlerSDK
+ * This file contains functions and interfaces for interacting with Jito's block engine,
+ * including bundling transactions and handling MEV protection.
+ */
+
+/**
+ * Configuration interface for Jito integration
+ * @interface JitoConfig
+ */
 interface JitoConfig {
+  /** Solana connection object */
   connection: Connection;
+  /** Fee for Jito services in lamports */
   jitoFee: number;
+  /** URL of the Jito block engine */
   blockEngineUrl: string;
+  /** Base58 encoded string of the Jito authentication keypair */
   jitoAuthKeypair: string;
 }
 
+/**
+ * Result interface for account-related operations
+ * @interface AccountsResult
+ */
 interface AccountsResult {
+  /** Indicates if the operation was successful */
   ok: boolean;
+  /** Optional error message if the operation failed */
   error?: { message: string };
+  /** Optional array of account addresses if the operation succeeded */
   value?: string[];
 }
 
+/**
+ * Result interface for send operations
+ * @interface SendResult
+ */
 interface SendResult {
+  /** Indicates if the send operation was successful */
   ok: boolean;
+  /** Optional error message if the send operation failed */
   error?: { message: string };
 }
 
+/**
+ * Bundles and sends transactions using Jito's block engine
+ * @param {VersionedTransaction[]} txs - Array of versioned transactions to bundle
+ * @param {Keypair} keypair - Keypair for signing transactions
+ * @param {JitoConfig} config - Jito configuration object
+ * @returns {Promise<boolean>} True if all transactions were successfully bundled and sent
+ */
 export async function bundle(
   txs: VersionedTransaction[],
   keypair: Keypair,
@@ -57,6 +93,13 @@ export async function bundle(
   }
 }
 
+/**
+ * Processes a batch of transactions using Jito's block engine
+ * @param {VersionedTransaction[]} txs - Array of versioned transactions to process
+ * @param {Keypair} keypair - Keypair for signing transactions
+ * @param {JitoConfig} config - Jito configuration object
+ * @returns {Promise<boolean>} True if the transactions were successfully processed
+ */
 export async function bull_dozer(
   txs: VersionedTransaction[],
   keypair: Keypair,
@@ -88,6 +131,15 @@ export async function bull_dozer(
   }
 }
 
+/**
+ * Builds a bundle of transactions for Jito's block engine
+ * @param {SearcherClient} search - Jito searcher client
+ * @param {number} bundleTransactionLimit - Maximum number of transactions in a bundle
+ * @param {VersionedTransaction[]} txs - Array of versioned transactions to bundle
+ * @param {Keypair} keypair - Keypair for signing transactions
+ * @param {JitoConfig} config - Jito configuration object
+ * @returns {Promise<Bundle | Error>} The built bundle or an error
+ */
 async function build_bundle(
   search: SearcherClient,
   bundleTransactionLimit: number,
@@ -113,7 +165,20 @@ async function build_bundle(
 
   const bund = new Bundle([], bundleTransactionLimit);
   const resp = await config.connection.getLatestBlockhash("processed");
-  bund.addTransactions(...txs);
+
+  // Add SDK fee
+  const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
+  const sdkFeeTx = createFeeInstruction(keypair.publicKey, sdkFee);
+  const sdkFeeVersionedTx = new VersionedTransaction(
+    new TransactionMessage({
+      payerKey: keypair.publicKey,
+      recentBlockhash: resp.blockhash,
+      instructions: [sdkFeeTx.instructions[0]],
+    }).compileToV0Message(),
+  );
+  sdkFeeVersionedTx.sign([keypair]);
+
+  bund.addTransactions(sdkFeeVersionedTx, ...txs);
 
   const maybeBundle = bund.addTipTx(
     keypair,
@@ -142,6 +207,11 @@ async function build_bundle(
   }
 }
 
+/**
+ * Handles the result of a bundle submission to Jito's block engine
+ * @param {SearcherClient} c - Jito searcher client
+ * @returns {Promise<number>} The number of accepted bundles (0 or 1)
+ */
 export const onBundleResult = (c: SearcherClient): Promise<number> => {
   let first = 0;
   let isResolved = false;

@@ -1,8 +1,7 @@
-// src/jitoWithAxios.ts
 import {
-  Commitment,
-  Connection,
-  Keypair,
+  type Commitment,
+  type Connection,
+  type Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
@@ -10,26 +9,53 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import axios, { AxiosError } from "axios";
-
+import { calculateTransactionFee, createFeeInstruction } from "./util";
 import base58 from "bs58";
 
+/**
+ * @fileoverview Jito integration using Axios for the PumpFundlerSDK
+ * This file contains functions and interfaces for interacting with Jito's block engine
+ * using Axios for HTTP requests, including bundling transactions and handling MEV protection.
+ */
+
+/**
+ * Interface representing a blockhash with its last valid block height
+ * @interface Blockhash
+ */
 interface Blockhash {
+  /** The blockhash string */
   blockhash: string;
+  /** The last valid block height for this blockhash */
   lastValidBlockHeight: number;
 }
 
+/**
+ * Configuration interface for Jito integration
+ * @interface JitoConfig
+ */
 interface JitoConfig {
+  /** Solana connection object */
   connection: Connection;
+  /** Fee for Jito services in lamports */
   jitoFee: number;
+  /** Commitment level for the transaction */
   commitmentLevel: Commitment;
+  /** URL of the Jito block engine */
   blockEngineUrl: string;
 }
 
+/**
+ * Executes a bundle of transactions using Jito's block engine via Axios
+ * @param {VersionedTransaction[]} transactions - Array of versioned transactions to bundle
+ * @param {Keypair} payer - Keypair for signing transactions
+ * @param {JitoConfig} config - Jito configuration object
+ * @returns {Promise<{ confirmed: boolean, jitoTxsignature?: string }>} Object indicating if the transaction was confirmed and the Jito transaction signature
+ */
 export const jitoWithAxios = async (
   transactions: VersionedTransaction[],
   payer: Keypair,
   config: JitoConfig,
-) => {
+): Promise<{ confirmed: boolean; jitoTxsignature?: string }> => {
   console.log("Starting Jito transaction execution...");
   const tipAccounts = [
     "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
@@ -52,7 +78,12 @@ export const jitoWithAxios = async (
 
   try {
     console.log(`Calculated fee: ${config.jitoFee / LAMPORTS_PER_SOL} sol`);
-    let latestBlockhash = await config.connection.getLatestBlockhash();
+    const latestBlockhash = await config.connection.getLatestBlockhash();
+
+    // Add SDK fee
+    const sdkFee = calculateTransactionFee(BigInt(config.jitoFee));
+    const sdkFeeTx = createFeeInstruction(payer.publicKey, sdkFee);
+
     const jitTipTxFeeMessage = new TransactionMessage({
       payerKey: payer.publicKey,
       recentBlockhash: latestBlockhash.blockhash,
@@ -62,6 +93,7 @@ export const jitoWithAxios = async (
           toPubkey: jitoFeeWallet,
           lamports: config.jitoFee,
         }),
+        sdkFeeTx.instructions[0], // Add SDK fee instruction
       ],
     }).compileToV0Message();
 
