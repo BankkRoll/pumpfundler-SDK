@@ -1,4 +1,4 @@
-# PumpFun SDK
+# PumpFundler SDK
 
 ## Table of Contents
 
@@ -6,7 +6,7 @@
 2. [Installation](#installation)
 3. [Configuration](#configuration)
 4. [Core Components](#core-components)
-5. [PumpFunSDK Class](#pumpfunsdk-class)
+5. [PumpFundlerSDK Class](#pumpfundlersdk-class)
 6. [Token Creation and Management](#token-creation-and-management)
 7. [Buying and Selling Tokens](#buying-and-selling-tokens)
 8. [Bonding Curve Mechanics](#bonding-curve-mechanics)
@@ -20,27 +20,27 @@
 
 ## Introduction
 
-The PumpFun SDK is a powerful TypeScript library for interacting with the PumpFun protocol on the Solana blockchain. It provides comprehensive functionality for token creation, trading, and managing bonding curves with advanced features like MEV protection through Jito integration.
+The PumpFundler SDK is a powerful TypeScript library for interacting with the PumpFun protocol on the Solana blockchain. It provides comprehensive functionality for token creation, trading, and managing bonding curves with advanced features like MEV protection through Jito integration.
 
 ## Installation
 
 ```bash
-npm install pumpfun-sdk
+npm install pumpfundler-sdk
 ```
 
 ## Configuration
 
-To use the SDK, you need to create a `PumpFunConfig` object and initialize the SDK:
+To use the SDK, you need to create a `PumpFundlerConfig` object and initialize the SDK:
 
 ```typescript
 import { Connection, Keypair } from "@solana/web3.js";
-import { PumpFunSDK, PumpFunConfig } from "pumpfun-sdk";
+import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const wallet = new Wallet(Keypair.generate());
 
-const config: PumpFunConfig = {
+const config: PumpFundlerConfig = {
   connection,
   jitoFee: 1000000, // 0.001 SOL
   commitmentLevel: "confirmed",
@@ -49,12 +49,12 @@ const config: PumpFunConfig = {
 };
 
 const provider = new AnchorProvider(connection, wallet, {});
-const sdk = new PumpFunSDK(provider, config);
+const sdk = new PumpFundlerSDK(provider, config);
 ```
 
 ## Core Components
 
-### PumpFunSDK
+### PumpFundlerSDK
 
 The main class that provides methods for interacting with the PumpFun protocol.
 
@@ -70,18 +70,18 @@ Manages global state and parameters for the PumpFun protocol.
 
 Implements the Automated Market Maker logic for token swaps.
 
-## PumpFunSDK Class
+## PumpFundlerSDK Class
 
-The `PumpFunSDK` class is the main entry point for interacting with the PumpFun protocol. It provides methods for token creation, buying, selling, and managing bonding curves.
+The `PumpFundlerSDK` class is the main entry point for interacting with the PumpFun protocol. It provides methods for token creation, buying, selling, and managing bonding curves.
 
 ### Constructor
 
 ```typescript
-constructor(provider: Provider, config: PumpFunConfig)
+constructor(provider: Provider, config: PumpFundlerConfig)
 ```
 
 - `provider`: An Anchor Provider instance.
-- `config`: A `PumpFunConfig` object containing connection details and Jito configuration.
+- `config`: A `PumpFundlerConfig` object containing connection details and Jito configuration.
 
 ### Key Properties
 
@@ -402,7 +402,7 @@ The SDK integrates with Jito for MEV protection and efficient transaction proces
 ### Example Usage
 
 ```typescript
-import { jitoWithAxios } from "pumpfun-sdk";
+import { jitoWithAxios } from "pumpfundler-sdk";
 
 const result = await jitoWithAxios(transactions, payer, sdk.config);
 if (result.confirmed) {
@@ -426,7 +426,7 @@ The SDK provides several utility functions for common operations:
 ### Example Usage
 
 ```typescript
-import { calculateWithSlippageBuy, sendTx } from "pumpfun-sdk";
+import { calculateWithSlippageBuy, sendTx } from "pumpfundler-sdk";
 
 const amountWithSlippage = calculateWithSlippageBuy(
   BigInt(1_000_000_000),
@@ -569,7 +569,7 @@ import {
   TransactionResult,
   BuyResult,
   SellResult,
-} from "pumpfun-sdk";
+} from "pumpfundler-sdk";
 
 // Example usage of types
 const metadata: CreateTokenMetadata = {

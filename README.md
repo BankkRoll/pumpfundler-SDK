@@ -12,20 +12,20 @@ pumpfundler-sdk is a powerful TypeScript library for interacting with the PumpFu
 1. Install the SDK:
 
 ```bash
-npm install pumpfun-sdk
+npm install pumpfundler-sdk
 ```
 
 2. Import and configure the SDK:
 
 ```typescript
 import { Connection, Keypair } from "@solana/web3.js";
-import { PumpFunSDK, PumpFunConfig } from "pumpfun-sdk";
+import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 const wallet = new Wallet(Keypair.generate());
 
-const config: PumpFunConfig = {
+const config: PumpFundlerConfig = {
   connection,
   jitoFee: 1000000, // 0.001 SOL
   commitmentLevel: "confirmed",
@@ -34,7 +34,7 @@ const config: PumpFunConfig = {
 };
 
 const provider = new AnchorProvider(connection, wallet, {});
-const sdk = new PumpFunSDK(provider, config);
+const sdk = new PumpFundlerSDK(provider, config);
 ```
 
 3. Use the SDK to interact with the PumpFun protocol:
