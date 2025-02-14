@@ -151,9 +151,7 @@ async function build_bundle(
   const accountsResult = await search.getTipAccounts();
   if (!Array.isArray(accountsResult)) {
     return new Error(
-      `Failed to get tip accounts: ${
-        (accountsResult as any).error?.message ?? "Unknown error"
-      }`,
+      `Failed to get tip accounts: ${(accountsResult as any).error?.message ?? "Unknown error"}`,
     );
   }
   const accounts = accountsResult;
@@ -204,9 +202,7 @@ async function build_bundle(
     const sendResult = await search.sendBundle(maybeBundle);
     if (typeof sendResult !== "string") {
       return new Error(
-        `Failed to send bundle: ${
-          (sendResult as any).error?.message ?? "Unknown error"
-        }`,
+        `Failed to send bundle: ${(sendResult as any).error?.message ?? "Unknown error"}`,
       );
     }
     return maybeBundle;

@@ -1,0 +1,158 @@
+---
+title: "Bonding Curve Account"
+description: "Understanding and working with Bonding Curve Accounts in the PumpFundler SDK"
+---
+
+# Bonding Curve Account
+
+The Bonding Curve Account is a fundamental concept in the PumpFun protocol. It represents the state of a token's bonding curve, which determines the pricing dynamics of the token.
+
+## Structure
+
+The `BondingCurveAccount` class has the following properties:
+
+```typescript
+class BondingCurveAccount {
+  public discriminator: bigint;
+  public virtualTokenReserves: bigint;
+  public virtualSolReserves: bigint;
+  public realTokenReserves: bigint;
+  public realSolReserves: bigint;
+  public tokenTotalSupply: bigint;
+  public complete: boolean;
+
+  // ... methods ...
+}
+```
+
+- `discriminator`: A unique identifier for the account type
+- `virtualTokenReserves`: The virtual token balance used for price calculations
+- `virtualSolReserves`: The virtual SOL balance used for price calculations
+- `realTokenReserves`: The actual token balance in the bonding curve
+- `realSolReserves`: The actual SOL balance in the bonding curve
+- `tokenTotalSupply`: The total supply of tokens
+- `complete`: A flag indicating if the bonding curve is complete (all tokens sold)
+
+## Key Methods
+
+### getBuyPrice
+
+```typescript
+getBuyPrice(amount: bigint): bigint
+```
+
+Calculates the price in SOL for buying a specific amount of tokens. This method:
+
+1. Checks if the curve is complete
+2. Calculates the new virtual reserves after the purchase
+3. Determines the amount of tokens to be purchased
+4. Returns the minimum of the calculated tokens and real token reserves
+
+### getSellPrice
+
+```typescript
+getSellPrice(amount: bigint, feeBasisPoints: bigint): bigint
+```
+
+Calculates the amount of SOL received for selling a specific amount of tokens. This method:
+
+1. Checks if the curve is complete
+2. Calculates the proportional amount of virtual SOL reserves to be received
+3. Applies the fee based on the provided fee basis points
+4. Returns the net amount after deducting the fee
+
+### getMarketCapSOL
+
+```typescript
+getMarketCapSOL(): bigint
+```
+
+Calculates the current market cap of the token in SOL. This is done by:
+
+1. Checking if there are any virtual token reserves
+2. Calculating the market cap based on the total supply and virtual reserves ratio
+
+### getFinalMarketCapSOL
+
+```typescript
+getFinalMarketCapSOL(feeBasisPoints: bigint): bigint
+```
+
+Estimates the final market cap of the token in SOL when all tokens are sold. This method:
+
+1. Calculates the total sell value of remaining real token reserves
+2. Determines the total virtual value and remaining virtual tokens
+3. Computes the final market cap based on these values
+
+### getBuyOutPrice
+
+```typescript
+getBuyOutPrice(amount: bigint, feeBasisPoints: bigint): bigint
+```
+
+Calculates the price to buy out a specific amount of tokens from the bonding curve. This method:
+
+1. Determines the amount of SOL tokens to use in the calculation
+2. Calculates the total sell value based on the virtual reserves
+3. Applies the fee based on the provided fee basis points
+4. Returns the total buyout price
+
+## Creating a BondingCurveAccount
+
+The `BondingCurveAccount` can be created from a buffer, typically obtained from on-chain data:
+
+```typescript
+static fromBuffer(buffer: Buffer): BondingCurveAccount
+```
+
+This static method:
+1. Defines the structure of the account data
+2. Decodes the buffer into a JavaScript object
+3. Creates and returns a new `BondingCurveAccount` instance with the decoded data
+
+## Usage in the SDK
+
+The `BondingCurveAccount` is primarily used in the PumpFundler SDK for:
+
+1. Calculating buy and sell prices for tokens
+2. Determining the current and projected market cap of tokens
+3. Managing the state of individual token bonding curves
+
+When interacting with the PumpFun protocol, you'll often work with `BondingCurveAccount` instances to make informed decisions about trading and to understand the current state of a token's bonding curve.
+
+## Example: Fetching and Using a Bonding Curve Account
+
+Here's an example of how to fetch and use a `BondingCurveAccount` in the PumpFundler SDK:
+
+```typescript
+import { PumpFundlerSDK, BondingCurveAccount } from "pumpfundler-sdk";
+import { PublicKey } from "@solana/web3.js";
+
+// Assume 'sdk' is an initialized PumpFundlerSDK instance
+const mint = new PublicKey("..."); // The token's mint address
+
+async function analyzeBondingCurve() {
+  const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+  
+  if (bondingCurveAccount) {
+    console.log("Virtual Token Reserves:", bondingCurveAccount.virtualTokenReserves.toString());
+    console.log("Virtual SOL Reserves:", bondingCurveAccount.virtualSolReserves.toString());
+    
+    const buyAmount = 1000000n; // 1 token with 6 decimals
+    const buyPrice = bondingCurveAccount.getBuyPrice(buyAmount);
+    console.log("Price to buy 1 token:", buyPrice.toString());
+    
+    const currentMarketCap = bondingCurveAccount.getMarketCapSOL();
+    console.log("Current Market Cap (SOL):", currentMarketCap.toString());
+    
+    const finalMarketCap = bondingCurveAccount.getFinalMarketCapSOL(30n); // 0.3% fee
+    console.log("Projected Final Market Cap (SOL):", finalMarketCap.toString());
+  } else {
+    console.log("Bonding curve account not found for the given mint.");
+  }
+}
+
+analyzeBondingCurve();
+```
+
+This example demonstrates how to fetch a `BondingCurveAccount`, analyze its current state, and use its methods to calculate important metrics like buy price and market cap.

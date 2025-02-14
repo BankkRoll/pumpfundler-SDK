@@ -42,10 +42,8 @@ const wallet = new Wallet(Keypair.generate());
 
 const config: PumpFundlerConfig = {
   connection,
-  jitoFee: 1000000, // 0.001 SOL
   commitmentLevel: "confirmed",
   blockEngineUrl: "https://your-jito-block-engine-url.com",
-  jitoAuthKeypair: "your-jito-auth-keypair-base58",
 };
 
 const provider = new AnchorProvider(connection, wallet, {});
@@ -97,15 +95,17 @@ Creates a new token and executes initial buy orders.
 
 ```typescript
 async createAndBuy(
-creator: Keypair,
-mint: Keypair,
-buyers: Keypair[],
-createTokenMetadata: CreateTokenMetadata,
-buyAmountSol: bigint,
-slippageBasisPoints: bigint = 300n,
-priorityFees?: PriorityFee,
-commitment: Commitment = DEFAULT_COMMITMENT,
-finality: Finality = DEFAULT_FINALITY,
+  creator: Keypair,
+  mint: Keypair,
+  buyers: Keypair[],
+  createTokenMetadata: CreateTokenMetadata,
+  buyAmountSol: bigint,
+  slippageBasisPoints: bigint = 300n,
+  priorityFees?: PriorityFee,
+  commitment: Commitment = DEFAULT_COMMITMENT,
+  finality: Finality = DEFAULT_FINALITY,
+  jitoAuthKeypair?: string,
+  jitoFee?: number,
 ): Promise<{ confirmed: boolean, jitoTxsignature?: string }>
 ```
 
@@ -120,6 +120,8 @@ finality: Finality = DEFAULT_FINALITY,
 - `priorityFees`: Optional priority fees for the transaction.
 - `commitment`: Desired commitment level for the transaction.
 - `finality`: Desired finality for the transaction.
+- `jitoAuthKeypair`: Optional Jito authentication keypair.
+- `jitoFee`: Optional Jito fee.
 
 #### Example:
 
@@ -183,13 +185,15 @@ Executes a buy order for an existing token.
 
 ```typescript
 async buy(
-buyer: Keypair,
-mint: PublicKey,
-buyAmountSol: bigint,
-slippageBasisPoints: bigint = 500n,
-priorityFees?: PriorityFee,
-commitment: Commitment = DEFAULT_COMMITMENT,
-finality: Finality = DEFAULT_FINALITY,
+  buyer: Keypair,
+  mint: PublicKey,
+  buyAmountSol: bigint,
+  slippageBasisPoints: bigint = 500n,
+  priorityFees?: PriorityFee,
+  commitment: Commitment = DEFAULT_COMMITMENT,
+  finality: Finality = DEFAULT_FINALITY,
+  jitoAuthKeypair?: string,
+  jitoFee?: number,
 ): Promise<TransactionResult>
 ```
 
@@ -202,6 +206,8 @@ finality: Finality = DEFAULT_FINALITY,
 - `priorityFees`: Optional priority fees for the transaction.
 - `commitment`: Desired commitment level for the transaction.
 - `finality`: Desired finality for the transaction.
+- `jitoAuthKeypair`: Optional Jito authentication keypair.
+- `jitoFee`: Optional Jito fee.
 
 #### Example:
 
@@ -224,13 +230,15 @@ Executes a sell order for a token.
 
 ```typescript
 async sell(
-seller: Keypair,
-mint: PublicKey,
-sellTokenAmount: bigint,
-slippageBasisPoints: bigint = 500n,
-priorityFees?: PriorityFee,
-commitment: Commitment = DEFAULT_COMMITMENT,
-finality: Finality = DEFAULT_FINALITY,
+  seller: Keypair,
+  mint: PublicKey,
+  sellTokenAmount: bigint,
+  slippageBasisPoints: bigint = 500n,
+  priorityFees?: PriorityFee,
+  commitment: Commitment = DEFAULT_COMMITMENT,
+  finality: Finality = DEFAULT_FINALITY,
+  jitoAuthKeypair?: string,
+  jitoFee?: number,
 ): Promise<TransactionResult>
 ```
 
@@ -243,6 +251,8 @@ finality: Finality = DEFAULT_FINALITY,
 - `priorityFees`: Optional priority fees for the transaction.
 - `commitment`: Desired commitment level for the transaction.
 - `finality`: Desired finality for the transaction.
+- `jitoAuthKeypair`: Optional Jito authentication keypair.
+- `jitoFee`: Optional Jito fee.
 
 #### Example:
 
@@ -367,8 +377,8 @@ The SDK provides methods for subscribing to various events:
 
 ```typescript
 addEventListener<T extends PumpFunEventType>(
-eventType: T,
-callback: (event: PumpFunEventHandlers[T], slot: number, signature: string) => void
+  eventType: T,
+  callback: (event: PumpFunEventHandlers[T], slot: number, signature: string) => void
 ): number
 
 removeEventListener(eventId: number): void
@@ -601,3 +611,5 @@ type SellResult = {
   sol_amount: bigint;
 };
 ```
+
+This concludes the comprehensive README for the PumpFundler SDK, covering all aspects of its functionality and usage.

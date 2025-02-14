@@ -1,0 +1,274 @@
+---
+title: "Event Handling"
+description: "Advanced guide to handling events in the PumpFundler SDK"
+---
+
+# Event Handling
+
+Event handling is a crucial aspect of the PumpFundler SDK, allowing developers to react to various on-chain events in real-time. This guide provides an in-depth look at how to work with events, including best practices and advanced techniques.
+
+## Understanding PumpFundler Events
+
+The PumpFundler SDK emits several types of events:
+
+1. `createEvent`: Triggered when a new token is created.
+2. `tradeEvent`: Emitted for buy and sell operations.
+3. `completeEvent`: Fired when a bonding curve is completed.
+4. `setParamsEvent`: Occurs when global parameters are updated.
+
+Each event type contains specific data relevant to the action that triggered it.
+
+## Basic Event Listening
+
+To start listening for events, you use the `addEventListener` method of the PumpFundlerSDK instance:
+
+```typescript
+import { PumpFundlerSDK, CreateEvent, TradeEvent, CompleteEvent, SetParamsEvent } from 'pumpfundler-sdk';
+
+const sdk = new PumpFundlerSDK(provider, config);
+
+// Listen for create events
+const createEventListener = sdk.addEventListener('createEvent', (event: CreateEvent, slot: number, signature: string) => {
+  console.log('New token created:', event.name, 'with symbol:', event.symbol);
+});
+
+// Listen for trade events
+const tradeEventListener = sdk.addEventListener('tradeEvent', (event: TradeEvent, slot: number, signature: string) => {
+  console.log('Trade occurred:', event.isBuy ? 'Buy' : 'Sell', 'Amount:', event.tokenAmount.toString());
+});
+
+// Listen for complete events
+const completeEventListener = sdk.addEventListener('completeEvent', (event: CompleteEvent, slot: number, signature: string) => {
+  console.log('Bonding curve completed for mint:', event.mint.toBase58());
+});
+
+// Listen for setParams events
+const setParamsEventListener = sdk.addEventListener('setParamsEvent', (event: SetParamsEvent, slot: number, signature: string) => {
+  console.log('Global parameters updated. New fee basis points:', event.feeBasisPoints.toString());
+});
+```
+
+## Advanced Event Handling Techniques
+
+### 1. Filtering Events
+
+You can implement custom filtering logic to process only specific events:
+
+```typescript
+sdk.addEventListener('tradeEvent', (event: TradeEvent, slot: number, signature: string) => {
+  // Only process large trades
+  if (event.solAmount > BigInt(1000000000)) { // 1 SOL
+    console.log('Large trade detected:', event);
+  }
+});
+```
+
+### 2. Batching Events
+
+For high-frequency events, consider batching to reduce processing overhead:
+
+```typescript
+let tradeBatch: TradeEvent[] = [];
+const BATCH_SIZE = 10;
+const BATCH_INTERVAL = 5000; // 5 seconds
+
+sdk.addEventListener('tradeEvent', (event: TradeEvent) => {
+  tradeBatch.push(event);
+  if (tradeBatch.length >= BATCH_SIZE) {
+    processTradeBatch(tradeBatch);
+    tradeBatch = [];
+  }
+});
+
+setInterval(() => {
+  if (tradeBatch.length > 0) {
+    processTradeBatch(tradeBatch);
+    tradeBatch = [];
+  }
+}, BATCH_INTERVAL);
+
+function processTradeBatch(batch: TradeEvent[]) {
+  console.log('Processing batch of', batch.length, 'trades');
+  // Process the batch...
+}
+```
+
+### 3. Event Correlation
+
+Correlate different event types to gain deeper insights:
+
+```typescript
+let recentCreations = new Map<string, CreateEvent>();
+
+sdk.addEventListener('createEvent', (event: CreateEvent) => {
+  recentCreations.set(event.mint.toBase58(), event);
+});
+
+sdk.addEventListener('tradeEvent', (event: TradeEvent) => {
+  const creation = recentCreations.get(event.mint.toBase58());
+  if (creation) {
+    console.log('Trade for recently created token:', creation.name);
+    // Additional analysis...
+  }
+});
+```
+
+### 4. Error Handling and Retry Logic
+
+Implement robust error handling and retry logic for event listeners:
+
+```typescript
+function addEventListenerWithRetry<T extends keyof PumpFunEventHandlers>(
+  sdk: PumpFundlerSDK,
+  eventType: T,
+  callback: (event: PumpFunEventHandlers[T], slot: number, signature: string) => void,
+  maxRetries = 3
+) {
+  let retries = 0;
+
+  function attemptListen() {
+    try {
+      return sdk.addEventListener(eventType, (event, slot, signature) => {
+        try {
+          callback(event, slot, signature);
+        } catch (error) {
+          console.error('Error in event callback:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error adding event listener:', error);
+      if (retries < maxRetries) {
+        retries++;
+        console.log(`Retrying in \${Math.pow(2, retries)} seconds...`);
+        setTimeout(attemptListen, Math.pow(2, retries) * 1000);
+      } else {
+        console.error('Max retries reached. Failed to add event listener.');
+      }
+    }
+  }
+
+  return attemptListen();
+}
+
+// Usage
+addEventListenerWithRetry(sdk, 'tradeEvent', (event) => {
+  console.log('Trade event:', event);
+});
+```
+
+### 5. Event Persistence
+
+For critical events, consider persisting them to a database for later analysis:
+
+```typescript
+import { MongoClient } from 'mongodb';
+
+const client = new MongoClient('mongodb://localhost:27017');
+let db: any;
+
+async function connectDB() {
+  await client.connect();
+  db = client.db('pumpfundler_events');
+}
+
+connectDB();
+
+sdk.addEventListener('tradeEvent', async (event: TradeEvent, slot: number, signature: string) => {
+  try {
+    await db.collection('trades').insertOne({
+      ...event,
+      slot,
+      signature,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Failed to persist trade event:', error);
+  }
+});
+```
+
+## Best Practices
+
+1. **Memory Management**: Always remove event listeners when they're no longer needed to prevent memory leaks:
+
+   ```typescript
+   const listener = sdk.addEventListener('tradeEvent', callback);
+   // When done
+   sdk.removeEventListener(listener);
+   ```
+
+2. **Throttling**: Implement throttling for high-frequency events to prevent overwhelming your application:
+
+   ```typescript
+   import { throttle } from 'lodash';
+
+   const throttledCallback = throttle((event: TradeEvent) => {
+     console.log('Throttled trade event:', event);
+   }, 1000); // Max once per second
+
+   sdk.addEventListener('tradeEvent', throttledCallback);
+   ```
+
+3. **Logging**: Implement comprehensive logging for event handling to aid in debugging and monitoring:
+
+   ```typescript
+   import { createLogger, format, transports } from 'winston';
+
+   const logger = createLogger({
+     level: 'info',
+     format: format.combine(
+       format.timestamp(),
+       format.json()
+     ),
+     transports: [
+       new transports.File({ filename: 'events.log' })
+     ]
+   });
+
+   sdk.addEventListener('tradeEvent', (event: TradeEvent, slot: number, signature: string) => {
+     logger.info('Trade event', { event, slot, signature });
+   });
+   ```
+
+4. **Event Validation**: Always validate event data before processing to ensure integrity:
+
+   ```typescript
+   function isValidTradeEvent(event: TradeEvent): boolean {
+     return (
+       event.mint instanceof PublicKey &&
+       typeof event.solAmount === 'bigint' &&
+       typeof event.tokenAmount === 'bigint' &&
+       typeof event.isBuy === 'boolean' &&
+       event.user instanceof PublicKey &&
+       typeof event.timestamp === 'number'
+     );
+   }
+
+   sdk.addEventListener('tradeEvent', (event: TradeEvent) => {
+     if (isValidTradeEvent(event)) {
+       // Process the event
+     } else {
+       console.error('Invalid trade event:', event);
+     }
+   });
+   ```
+
+5. **Performance Monitoring**: Implement performance monitoring for your event handlers:
+
+   ```typescript
+   function withPerformanceMonitoring<T extends keyof PumpFunEventHandlers>(
+     eventType: T,
+     callback: (event: PumpFunEventHandlers[T], slot: number, signature: string) => void
+   ) {
+     return (event: PumpFunEventHandlers[T], slot: number, signature: string) => {
+       const start = performance.now();
+       callback(event, slot, signature);
+       const end = performance.now();
+       console.log(`\${eventType} handler took \${end - start} milliseconds`);
+     };
+   }
+
+   sdk.addEventListener('tradeEvent', withPerformanceMonitoring('tradeEvent', (event) => {
+     // Process trade event
+   }));
+   ```

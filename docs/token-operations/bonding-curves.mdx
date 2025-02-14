@@ -1,0 +1,95 @@
+---
+title: "Bonding Curves"
+description: "Comprehensive guide to understanding and working with bonding curves in the PumpFundler SDK"
+---
+
+# Bonding Curves
+
+Bonding curves are a fundamental concept in the PumpFundler protocol, governing the relationship between token supply and price. This guide provides an in-depth look at how bonding curves work in the PumpFundler ecosystem and how to interact with them using the SDK.
+
+## Understanding Bonding Curves
+
+A bonding curve is a mathematical function that defines the relationship between a token's price and its supply. In the PumpFundler protocol, we use a specific type of bonding curve known as a "constant product" curve.
+
+### Key Concepts
+
+1. **Virtual Reserves**: These are used to calculate the price but don't represent actual assets.
+2. **Real Reserves**: These represent the actual assets (SOL and tokens) in the pool.
+3. **Constant Product Formula**: The product of virtual SOL reserves and virtual token reserves remains constant.
+
+## Bonding Curve Mathematics
+
+The core formula for our bonding curve is:
+
+```
+virtualSolReserves * virtualTokenReserves = constant
+```
+
+When buying or selling tokens, we adjust the virtual reserves to maintain this constant product.
+
+### Buying Tokens
+
+When buying tokens, we increase the virtual SOL reserves and decrease the virtual token reserves:
+
+```typescript
+const newVirtualSolReserves = virtualSolReserves + solAmount;
+const newVirtualTokenReserves = constant / newVirtualSolReserves;
+const tokensBought = virtualTokenReserves - newVirtualTokenReserves;
+```
+
+### Selling Tokens
+
+When selling tokens, we decrease the virtual SOL reserves and increase the virtual token reserves:
+
+```typescript
+const newVirtualTokenReserves = virtualTokenReserves + tokenAmount;
+const newVirtualSolReserves = constant / newVirtualTokenReserves;
+const solReceived = virtualSolReserves - newVirtualSolReserves;
+```
+
+## Implementing Bonding Curves in the SDK
+
+The PumpFundler SDK encapsulates bonding curve logic in the `AMM` (Automated Market Maker) class. Let's explore how to work with this class.
+
+### Creating an AMM Instance
+
+```typescript
+import { AMM, BondingCurveAccount } from "pumpfundler-sdk";
+
+const amm = AMM.fromBondingCurveAccount(
+  bondingCurveAccount,
+  globalAccount.initialVirtualTokenReserves
+);
+```
+
+### Calculating Buy Price
+
+To calculate the price for buying a specific amount of tokens:
+
+```typescript
+const tokensToBuy = BigInt(1000 * 10**9); // 1000 tokens (assuming 9 decimals)
+const solNeeded = amm.getBuyPrice(tokensToBuy);
+console.log(`SOL needed to buy \${tokensToBuy} tokens: \${solNeeded}`);
+```
+
+### Calculating Sell Price
+
+To calculate the SOL received for selling a specific amount of tokens:
+
+```typescript
+const tokensToSell = BigInt(1000 * 10**9); // 1000 tokens (assuming 9 decimals)
+const solReceived = amm.getSellPrice(tokensToSell);
+console.log(`SOL received for selling \${tokensToSell} tokens: \${solReceived}`);
+```
+
+### Simulating Trades
+
+You can simulate trades to see how they would affect the bonding curve:
+
+```typescript
+const buyResult = amm.applyBuy(tokensToBuy);
+console.log(`Simulated buy: \${buyResult.token_amount} tokens for \${buyResult.sol_amount} SOL`);
+
+const sellResult = amm.applySell(tokensToSell);
+console.log(`Simulated sell: \${sellResult.token_amount} tokens for \${sellResult.sol_amount} SOL`);
+```

@@ -1,0 +1,209 @@
+---
+title: "Configuration"
+description: "Configuring PumpFundler SDK for optimal performance in Solana projects"
+---
+
+This guide provides an in-depth look at configuring the PumpFundler SDK for optimal performance in your Solana project. We'll cover detailed explanations of each configuration option.
+
+## PumpFundlerConfig Interface
+
+The core of the SDK configuration is the `PumpFundlerConfig` interface:
+
+```typescript
+interface PumpFundlerConfig {
+  connection: Connection;
+  commitmentLevel: Commitment;
+  blockEngineUrl: string;
+}
+```
+
+Let's break down each property and explore its significance:
+
+<Accordion title="connection">
+  The `connection` property is an instance of the Solana `Connection` class. It's crucial for interacting with the Solana network.
+
+  ```typescript
+  import { Connection } from "@solana/web3.js";
+
+  const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  ```
+
+  <Tip>
+    For production use, consider using a dedicated RPC node or a service like QuickNode or Alchemy for better performance and reliability.
+  </Tip>
+</Accordion>
+
+<Accordion title="commitmentLevel">
+  The `commitmentLevel` determines the level of confirmation you require for transactions.
+
+  ```typescript
+  import { Commitment } from "@solana/web3.js";
+
+  const commitmentLevel: Commitment = "confirmed";
+  ```
+
+  Options include:
+  - `"processed"`: Fastest, but least certain
+  - `"confirmed"`: Good balance of speed and certainty
+  - `"finalized"`: Slowest, but most certain
+
+  <Tip>
+    Use "confirmed" for most applications. Only use "finalized" when absolute certainty is required.
+  </Tip>
+</Accordion>
+
+<Accordion title="blockEngineUrl">
+  The `blockEngineUrl` is the endpoint for Jito's block engine, crucial for MEV protection features.
+
+  ```typescript
+  const blockEngineUrl = "https://your-jito-block-engine-url.com";
+  ```
+
+  <Note>
+    Ensure this URL is correct and accessible from your deployment environment.
+  </Note>
+</Accordion>
+
+## SDK Initialization
+
+Here's how to initialize the SDK with configuration:
+
+```typescript
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+const wallet = new Wallet(Keypair.generate());
+
+const config: PumpFundlerConfig = {
+  connection,
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com",
+};
+
+const provider = new AnchorProvider(connection, wallet, {
+  preflightCommitment: "processed",
+  commitment: "confirmed",
+});
+
+const sdk = new PumpFundlerSDK(provider, config);
+```
+
+## Jito Integration
+
+For MEV protection and efficient transaction processing, you can use Jito integration. This is handled separately from the main configuration:
+
+```typescript
+import { jitoWithAxios } from "pumpfundler-sdk";
+
+// Jito configuration
+const jitoConfig = {
+  jitoAuthKeypair: "your_base58_encoded_jito_auth_keypair",
+  jitoFee: 10000, // in lamports
+};
+
+// Example usage in a transaction
+const result = await jitoWithAxios(transactions, payer, {
+  ...config,
+  ...jitoConfig,
+});
+```
+
+<Warning>
+  Never expose your Jito authentication keypair in client-side code or public repositories. Use secure key management practices.
+</Warning>
+
+## Optimizing Performance
+
+To maximize the performance of your PumpFundler SDK integration:
+
+1. **RPC Node Selection**: Choose a reliable and fast RPC node. Consider using dedicated nodes or services like QuickNode or Alchemy.
+
+2. **Commitment Levels**: Use appropriate commitment levels for different operations:
+   - Use "processed" for non-critical, high-frequency operations
+   - Use "confirmed" for most transactions
+   - Reserve "finalized" for critical, high-value transactions
+
+3. **Error Handling**: Implement robust error handling, especially for network-related issues:
+
+   ```typescript
+   try {
+     const result = await sdk.createAndBuy(/* ... */);
+     // Handle successful result
+   } catch (error) {
+     if (error instanceof Error) {
+       console.error("Error during create and buy:", error.message);
+       // Handle specific error types
+     } else {
+       console.error("Unknown error:", error);
+     }
+   }
+   ```
+
+4. **Batch Processing**: For multiple operations, consider using batching techniques:
+
+   ```typescript
+   const transactions = await Promise.all([
+     sdk.getBuyInstructions(/* ... */),
+     sdk.getSellInstructions(/* ... */),
+     // More instructions...
+   ]);
+
+   const batchedTx = await sdk.createBatchedTransaction(transactions);
+   const result = await sdk.sendAndConfirmTransaction(batchedTx);
+   ```
+
+## Features
+
+### Custom Event Handling
+
+Utilize the SDK's event system for real-time updates:
+
+```typescript
+sdk.addEventListener("tradeEvent", (event, slot, signature) => {
+  console.log(`Trade event: ${event.isBuy ? "Buy" : "Sell"} of ${event.tokenAmount} tokens`,
+              `for ${event.solAmount} SOL at slot ${slot}`);
+});
+```
+
+### Bonding Curve Calculations
+
+Leverage the `BondingCurveAccount` for price calculations:
+
+```typescript
+const bondingCurve = await sdk.getBondingCurveAccount(mintPublicKey);
+if (bondingCurve) {
+  const buyPrice = bondingCurve.getBuyPrice(BigInt(1000000)); // Price for 1 token
+  const marketCap = bondingCurve.getMarketCapSOL();
+  console.log(`Buy price: ${buyPrice}, Market Cap: ${marketCap}`);
+}
+```
+
+## Security Considerations
+
+1. **Key Management**: Never hardcode private keys. Use secure key management solutions.
+2. **Environment Variables**: Use environment variables for sensitive configuration:
+
+   ```typescript
+   const config: PumpFundlerConfig = {
+     // ...
+     blockEngineUrl: process.env.JITO_BLOCK_ENGINE_URL,
+   };
+   ```
+
+3. **Rate Limiting**: Implement rate limiting to prevent abuse of your SDK integration.
+4. **Monitoring**: Set up monitoring and alerting for unusual activity or errors in your SDK usage.
+
+## Next Steps
+
+Explore the following sections to dive deeper into the PumpFundler SDK:
+
+<CardGroup cols={2}>
+  <Card title="Examples" icon="code" href="/examples">
+    Explore practical code samples and best practices for integration.
+  </Card>
+  <Card title="Fees" icon="ticket" href="/fees">
+    Understand the fee structure of the PumpFundler SDK.
+  </Card>
+</CardGroup>

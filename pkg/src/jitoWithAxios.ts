@@ -43,6 +43,8 @@ interface JitoConfig {
   commitmentLevel: Commitment;
   /** URL of the Jito block engine */
   blockEngineUrl: string;
+  /** Jito authentication keypair */
+  jitoAuthKeypair: string;
 }
 
 /**

@@ -1,0 +1,268 @@
+---
+title: "Utility Functions"
+description: "Advanced guide to utility functions in the PumpFundler SDK"
+---
+
+# Utility Functions
+
+The PumpFundler SDK provides a set of utility functions to simplify common tasks and enhance the developer experience. This guide covers the advanced usage of these utility functions and demonstrates how to extend them for more complex scenarios.
+
+## Core Utility Functions
+
+### 1. Slippage Calculation
+
+The SDK provides functions to calculate buy and sell amounts with slippage:
+
+```typescript
+import { calculateWithSlippageBuy, calculateWithSlippageSell } from 'pumpfundler-sdk';
+
+const buyAmount = BigInt(1000000000); // 1 SOL
+const sellAmount = BigInt(1000000); // 1 token (assuming 6 decimals)
+const slippageBasisPoints = 100n; // 1%
+
+const buyAmountWithSlippage = calculateWithSlippageBuy(buyAmount, slippageBasisPoints);
+const sellAmountWithSlippage = calculateWithSlippageSell(sellAmount, slippageBasisPoints);
+
+console.log('Buy amount with slippage:', buyAmountWithSlippage.toString());
+console.log('Sell amount with slippage:', sellAmountWithSlippage.toString());
+```
+
+### 2. Transaction Building and Sending
+
+The SDK offers utility functions for building and sending transactions:
+
+```typescript
+import { buildTx, sendTx } from 'pumpfundler-sdk';
+import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
+
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+const payer = Keypair.generate();
+const transaction = new Transaction().add(/* your instructions here */);
+
+async function executeTransaction() {
+  const versionedTx = await buildTx(
+    connection,
+    transaction,
+    payer.publicKey,
+    [payer],
+    { unitLimit: 200000, unitPrice: 1000 }, // Priority fee
+    'confirmed'
+  );
+
+  const result = await sendTx(
+    connection,
+    transaction,
+    payer.publicKey,
+    [payer],
+    { unitLimit: 200000, unitPrice: 1000 }, // Priority fee
+    'confirmed',
+    'finalized'
+  );
+
+  console.log('Transaction result:', result);
+}
+```
+
+## Advanced Usage and Extensions
+
+### 1. Dynamic Slippage Calculation
+
+Extend the slippage calculation to dynamically adjust based on market conditions:
+
+```typescript
+import { AMM } from 'pumpfundler-sdk';
+
+async function calculateDynamicSlippage(
+  sdk: PumpFundlerSDK,
+  mint: PublicKey,
+  amount: bigint,
+  isBuy: boolean
+): Promise<bigint> {
+  const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+  const globalAccount = await sdk.getGlobalAccount();
+  const amm = AMM.fromBondingCurveAccount(bondingCurveAccount, globalAccount.initialVirtualTokenReserves);
+
+  const baseSlippage = 100n; // 1%
+  let dynamicSlippage: bigint;
+
+  if (isBuy) {
+    const impactRatio = amount * 10000n / amm.virtualSolReserves;
+    dynamicSlippage = baseSlippage + (impactRatio / 100n);
+  } else {
+    const impactRatio = amount * 10000n / amm.virtualTokenReserves;
+    dynamicSlippage = baseSlippage + (impactRatio / 100n);
+  }
+
+  return BigInt(Math.min(Number(dynamicSlippage), 1000)); // Cap at 10%
+}
+
+// Usage
+const dynamicSlippage = await calculateDynamicSlippage(sdk, mintPublicKey, BigInt(1000000000), true);
+const buyAmountWithDynamicSlippage = calculateWithSlippageBuy(buyAmount, dynamicSlippage);
+```
+
+### 2. Advanced Transaction Building
+
+Create a utility function for building complex transactions with multiple instructions:
+
+```typescript
+import { TransactionInstruction, Transaction, PublicKey } from '@solana/web3.js';
+
+async function buildComplexTransaction(
+  sdk: PumpFundlerSDK,
+  instructions: TransactionInstruction[],
+  signers: Keypair[],
+  feePayer: PublicKey
+): Promise<Transaction> {
+  const recentBlockhash = await sdk.connection.getRecentBlockhash('confirmed');
+  const transaction = new Transaction({
+    feePayer,
+    recentBlockhash: recentBlockhash.blockhash
+  });
+
+  // Add all instructions
+  instructions.forEach(instruction => transaction.add(instruction));
+
+  // Partially sign the transaction with all signers except the fee payer
+  signers.filter(signer => !signer.publicKey.equals(feePayer)).forEach(signer => {
+    transaction.partialSign(signer);
+  });
+
+  return transaction;
+}
+
+// Usage
+const buyInstruction = await sdk.getBuyInstructions(/* ... */);
+const sellInstruction = await sdk.getSellInstructions(/* ... */);
+const complexTx = await buildComplexTransaction(
+  sdk,
+  [buyInstruction, sellInstruction],
+  [buyer, seller],
+  payer.publicKey
+);
+```
+
+### 3. Retry Mechanism with Exponential Backoff
+
+Implement a retry mechanism with exponential backoff for transaction sending:
+
+``Here's the continuation of the text stream from the cut-off point:
+
+retry mechanism with exponential backoff for transaction sending:
+
+```typescript
+import { sleep } from 'pumpfundler-sdk';
+
+async function sendTransactionWithRetry(
+  sdk: PumpFundlerSDK,
+  transaction: Transaction,
+  signers: Keypair[],
+  maxRetries: number = 3
+): Promise<string> {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const result = await sdk.sendAndConfirmTransaction(transaction, signers);
+      return result;
+    } catch (error) {
+      console.error(`Attempt ${retries + 1} failed:`, error);
+      retries++;
+      if (retries < maxRetries) {
+        const delay = Math.pow(2, retries) * 1000; // Exponential backoff
+        await sleep(delay);
+      }
+    }
+  }
+  throw new Error(`Transaction failed after ${maxRetries} attempts`);
+}
+
+// Usage
+try {
+  const signature = await sendTransactionWithRetry(sdk, transaction, [payer]);
+  console.log('Transaction confirmed with signature:', signature);
+} catch (error) {
+  console.error('Failed to send transaction:', error);
+}
+```
+
+### 4. Gas Estimation
+
+Create a utility function for estimating gas costs:
+
+```typescript
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+async function estimateTransactionCost(
+  sdk: PumpFundlerSDK,
+  transaction: Transaction,
+  commitment: Commitment = 'confirmed'
+): Promise<number> {
+  const { feeCalculator } = await sdk.connection.getRecentBlockhash(commitment);
+  const numSignatures = transaction.signatures.length;
+
+  let cost = feeCalculator.lamportsPerSignature * numSignatures;
+
+  for (const instruction of transaction.instructions) {
+    // Estimate cost based on instruction data size and accounts
+    cost += instruction.data.length * 5; // Arbitrary multiplier, adjust as needed
+    cost += instruction.keys.length * 5000; // Cost per account access
+  }
+
+  return cost / LAMPORTS_PER_SOL;
+}
+
+// Usage
+const estimatedCost = await estimateTransactionCost(sdk, transaction);
+console.log(`Estimated transaction cost: ${estimatedCost} SOL`);
+```
+
+### 5. Account Data Parsing
+
+Create utility functions for parsing account data:
+
+```typescript
+import { PublicKey } from '@solana/web3.js';
+import { BN } from 'bn.js';
+
+interface ParsedBondingCurveAccount {
+  discriminator: BN;
+  virtualTokenReserves: BN;
+  virtualSolReserves: BN;
+  realTokenReserves: BN;
+  realSolReserves: BN;
+  tokenTotalSupply: BN;
+  complete: boolean;
+}
+
+function parseBondingCurveAccount(data: Buffer): ParsedBondingCurveAccount {
+  // Implement parsing logic based on the account structure
+  // This is a simplified example
+  return {
+    discriminator: new BN(data.slice(0, 8)),
+    virtualTokenReserves: new BN(data.slice(8, 16)),
+    virtualSolReserves: new BN(data.slice(16, 24)),
+    realTokenReserves: new BN(data.slice(24, 32)),
+    realSolReserves: new BN(data.slice(32, 40)),
+    tokenTotalSupply: new BN(data.slice(40, 48)),
+    complete: data.readUInt8(48) === 1
+  };
+}
+
+async function fetchAndParseBondingCurveAccount(
+  sdk: PumpFundlerSDK,
+  mint: PublicKey
+): Promise<ParsedBondingCurveAccount | null> {
+  const bondingCurvePDA = sdk.getBondingCurvePDA(mint);
+  const accountInfo = await sdk.connection.getAccountInfo(bondingCurvePDA);
+  
+  if (!accountInfo) return null;
+  
+  return parseBondingCurveAccount(accountInfo.data);
+}
+
+// Usage
+const parsedAccount = await fetchAndParseBondingCurveAccount(sdk, mintPublicKey);
+if (parsedAccount) {
+  console.log('Parsed Bonding Curve Account:', parsedAccount);
+}
+```

@@ -31,7 +31,7 @@ import {
   getRandomInt,
   sendTx,
 } from "./util";
-import { IDL, PumpFun } from "./IDL";
+import { IDL, type PumpFun } from "./IDL";
 import { type AnchorProvider, type Idl, Program } from "@coral-xyz/anchor";
 import {
   createAssociatedTokenAccountInstruction,
@@ -73,10 +73,8 @@ export const DEFAULT_DECIMALS = 6;
  */
 interface PumpFundlerConfig {
   connection: Connection;
-  jitoFee: number;
   commitmentLevel: Commitment;
   blockEngineUrl: string;
-  jitoAuthKeypair: string;
 }
 
 /**
@@ -113,6 +111,8 @@ export class PumpFundlerSDK {
    * @param {PriorityFee} [priorityFees] - Optional priority fees
    * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
    * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @param {string} [jitoAuthKeypair] - Jito authentication keypair
+   * @param {number} [jitoFee] - Jito transaction fee
    * @returns {Promise<any>} The result of the create and buy operation
    */
   async createAndBuy(
@@ -125,6 +125,8 @@ export class PumpFundlerSDK {
     priorityFees?: PriorityFee,
     commitment: Commitment = DEFAULT_COMMITMENT,
     finality: Finality = DEFAULT_FINALITY,
+    jitoAuthKeypair?: string,
+    jitoFee?: number,
   ) {
     const tokenMetadata = await this.createTokenMetadata(createTokenMetadata);
 
@@ -179,26 +181,29 @@ export class PumpFundlerSDK {
       }
     }
 
-    await sendTx(
-      this.connection,
-      newTx,
-      creator.publicKey,
-      [creator, mint],
-      priorityFees,
-      commitment,
-      finality,
-    );
-    let result;
-    while (true) {
-      result = await jitoWithAxios(
-        [createVersionedTx, ...buyTxs],
-        creator,
-        this.config,
+    if (jitoAuthKeypair && jitoFee) {
+      let result;
+      while (true) {
+        result = await jitoWithAxios([createVersionedTx, ...buyTxs], creator, {
+          ...this.config,
+          jitoAuthKeypair,
+          jitoFee,
+        });
+        if (result.confirmed) break;
+      }
+      return result;
+    } else {
+      await sendTx(
+        this.connection,
+        newTx,
+        creator.publicKey,
+        [creator, mint],
+        priorityFees,
+        commitment,
+        finality,
       );
-      if (result.confirmed) break;
+      return { success: true }; // Placeholder for regular transaction result
     }
-
-    return result;
   }
 
   /**
@@ -210,6 +215,8 @@ export class PumpFundlerSDK {
    * @param {PriorityFee} [priorityFees] - Optional priority fees
    * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
    * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @param {string} [jitoAuthKeypair] - Jito authentication keypair
+   * @param {number} [jitoFee] - Jito transaction fee
    * @returns {Promise<TransactionResult>} The result of the buy transaction
    */
   async buy(
@@ -220,6 +227,8 @@ export class PumpFundlerSDK {
     priorityFees?: PriorityFee,
     commitment: Commitment = DEFAULT_COMMITMENT,
     finality: Finality = DEFAULT_FINALITY,
+    jitoAuthKeypair?: string,
+    jitoFee?: number,
   ): Promise<TransactionResult> {
     const fee = calculateTransactionFee(buyAmountSol);
     const buyAmountAfterFee = buyAmountSol - fee;
@@ -236,16 +245,39 @@ export class PumpFundlerSDK {
 
     const combinedTx = new Transaction().add(feeTx).add(buyTx);
 
-    const buyResults = await sendTx(
-      this.connection,
-      combinedTx,
-      buyer.publicKey,
-      [buyer],
-      priorityFees,
-      commitment,
-      finality,
-    );
-    return buyResults;
+    if (jitoAuthKeypair && jitoFee) {
+      const buyVersionedTx = await buildTx(
+        this.connection,
+        combinedTx,
+        buyer.publicKey,
+        [buyer],
+        priorityFees,
+        commitment,
+        finality,
+      );
+
+      let result;
+      while (true) {
+        result = await jitoWithAxios([buyVersionedTx], buyer, {
+          ...this.config,
+          jitoAuthKeypair,
+          jitoFee,
+        });
+        if (result.confirmed) break;
+      }
+      return { success: result.confirmed, signature: result.jitoTxsignature };
+    } else {
+      const buyResults = await sendTx(
+        this.connection,
+        combinedTx,
+        buyer.publicKey,
+        [buyer],
+        priorityFees,
+        commitment,
+        finality,
+      );
+      return buyResults;
+    }
   }
 
   /**
@@ -257,6 +289,8 @@ export class PumpFundlerSDK {
    * @param {PriorityFee} [priorityFees] - Optional priority fees
    * @param {Commitment} [commitment=DEFAULT_COMMITMENT] - The commitment level
    * @param {Finality} [finality=DEFAULT_FINALITY] - The finality level
+   * @param {string} [jitoAuthKeypair] - Jito authentication keypair
+   * @param {number} [jitoFee] - Jito transaction fee
    * @returns {Promise<TransactionResult>} The result of the sell transaction
    */
   async sell(
@@ -267,6 +301,8 @@ export class PumpFundlerSDK {
     priorityFees?: PriorityFee,
     commitment: Commitment = DEFAULT_COMMITMENT,
     finality: Finality = DEFAULT_FINALITY,
+    jitoAuthKeypair?: string,
+    jitoFee?: number,
   ): Promise<TransactionResult> {
     const sellTx = await this.getSellInstructionsByTokenAmount(
       seller.publicKey,
@@ -276,39 +312,106 @@ export class PumpFundlerSDK {
       commitment,
     );
 
-    const sellResults = await sendTx(
-      this.connection,
-      sellTx,
-      seller.publicKey,
-      [seller],
-      priorityFees,
-      commitment,
-      finality,
-    );
+    if (jitoAuthKeypair && jitoFee) {
+      const sellVersionedTx = await buildTx(
+        this.connection,
+        sellTx,
+        seller.publicKey,
+        [seller],
+        priorityFees,
+        commitment,
+        finality,
+      );
 
-    if (sellResults.success && sellResults.results?.meta) {
-      const postBalance = sellResults.results.meta.postBalances[0];
-      const preBalance = sellResults.results.meta.preBalances[0];
+      let result;
+      while (true) {
+        result = await jitoWithAxios([sellVersionedTx], seller, {
+          ...this.config,
+          jitoAuthKeypair,
+          jitoFee,
+        });
+        if (result.confirmed) break;
+      }
 
-      if (typeof postBalance === "number" && typeof preBalance === "number") {
-        const soldAmount = postBalance - preBalance;
-        if (soldAmount > 0) {
-          const fee = calculateTransactionFee(BigInt(soldAmount));
-          const feeTx = createFeeInstruction(seller.publicKey, fee);
-          await sendTx(
-            this.connection,
-            feeTx,
-            seller.publicKey,
-            [seller],
-            priorityFees,
-            commitment,
-            finality,
-          );
+      if (result.confirmed && result.jitoTxsignature) {
+        const txDetails = await this.connection.getTransaction(
+          result.jitoTxsignature,
+          {
+            maxSupportedTransactionVersion: 0,
+          },
+        );
+        if (txDetails && txDetails.meta) {
+          const postBalance = txDetails.meta.postBalances[0];
+          const preBalance = txDetails.meta.preBalances[0];
+
+          if (
+            typeof postBalance === "number" &&
+            typeof preBalance === "number"
+          ) {
+            const soldAmount = postBalance - preBalance;
+            if (soldAmount > 0) {
+              const fee = calculateTransactionFee(BigInt(soldAmount));
+              const feeTx = createFeeInstruction(seller.publicKey, fee);
+              await jitoWithAxios(
+                [
+                  await buildTx(
+                    this.connection,
+                    feeTx,
+                    seller.publicKey,
+                    [seller],
+                    priorityFees,
+                    commitment,
+                    finality,
+                  ),
+                ],
+                seller,
+                {
+                  ...this.config,
+                  jitoAuthKeypair,
+                  jitoFee,
+                },
+              );
+            }
+          }
         }
       }
-    }
 
-    return sellResults;
+      return { success: result.confirmed, signature: result.jitoTxsignature };
+    } else {
+      const sellResults = await sendTx(
+        this.connection,
+        sellTx,
+        seller.publicKey,
+        [seller],
+        priorityFees,
+        commitment,
+        finality,
+      );
+
+      if (sellResults.success && sellResults.results?.meta) {
+        const postBalance = sellResults.results.meta.postBalances[0];
+        const preBalance = sellResults.results.meta.preBalances[0];
+
+        if (typeof postBalance === "number" && typeof preBalance === "number") {
+          const soldAmount = postBalance - preBalance;
+          if (soldAmount > 0) {
+            const fee = calculateTransactionFee(BigInt(soldAmount));
+            const feeTx = createFeeInstruction(seller.publicKey, fee);
+            await sendTx(
+              this.connection,
+              feeTx,
+              seller.publicKey,
+              [seller],
+              priorityFees,
+              commitment,
+              finality,
+            );
+          }
+        }
+      }
+
+      return sellResults;
+    }
   }
 
   /**
