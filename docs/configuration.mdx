@@ -1,9 +1,9 @@
 ---
 title: "Configuration"
-description: "Configuring PumpFundler SDK for optimal performance in Solana projects"
+description: "Comprehensive guide for advanced configuration and usage of the PumpFundlerSDK"
 ---
 
-This guide provides an in-depth look at configuring the PumpFundler SDK for optimal performance in your Solana project. We'll cover detailed explanations of each configuration option.
+This guide provides an in-depth look at configuring and using the PumpFundlerSDK for advanced Solana project development. We'll cover detailed explanations of each configuration option, initialization, core functionalities, and advanced integrations.
 
 ## PumpFundlerConfig Interface
 
@@ -66,144 +66,453 @@ Let's break down each property and explore its significance:
 
 ## SDK Initialization
 
-Here's how to initialize the SDK with configuration:
+Here's how to initialize the SDK with full configuration:
 
 ```typescript
 import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
 
+// Initialize connection
 const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+
+// Create a wallet (for demonstration purposes, use proper key management in production)
 const wallet = new Wallet(Keypair.generate());
 
+// Configure the SDK
 const config: PumpFundlerConfig = {
   connection,
   commitmentLevel: "confirmed",
   blockEngineUrl: "https://your-jito-block-engine-url.com",
 };
 
+// Create the Anchor provider
 const provider = new AnchorProvider(connection, wallet, {
   preflightCommitment: "processed",
   commitment: "confirmed",
 });
 
+// Initialize the SDK
 const sdk = new PumpFundlerSDK(provider, config);
 ```
 
-## Jito Integration
+## Advanced Usage Scenarios
 
-For MEV protection and efficient transaction processing, you can use Jito integration. This is handled separately from the main configuration:
+### 1. Creating a Token with Initial Buyers
 
-```typescript
-import { jitoWithAxios } from "pumpfundler-sdk";
-
-// Jito configuration
-const jitoConfig = {
-  jitoAuthKeypair: "your_base58_encoded_jito_auth_keypair",
-  jitoFee: 10000, // in lamports
-};
-
-// Example usage in a transaction
-const result = await jitoWithAxios(transactions, payer, {
-  ...config,
-  ...jitoConfig,
-});
-```
-
-<Warning>
-  Never expose your Jito authentication keypair in client-side code or public repositories. Use secure key management practices.
-</Warning>
-
-## Optimizing Performance
-
-To maximize the performance of your PumpFundler SDK integration:
-
-1. **RPC Node Selection**: Choose a reliable and fast RPC node. Consider using dedicated nodes or services like QuickNode or Alchemy.
-
-2. **Commitment Levels**: Use appropriate commitment levels for different operations:
-   - Use "processed" for non-critical, high-frequency operations
-   - Use "confirmed" for most transactions
-   - Reserve "finalized" for critical, high-value transactions
-
-3. **Error Handling**: Implement robust error handling, especially for network-related issues:
-
-   ```typescript
-   try {
-     const result = await sdk.createAndBuy(/* ... */);
-     // Handle successful result
-   } catch (error) {
-     if (error instanceof Error) {
-       console.error("Error during create and buy:", error.message);
-       // Handle specific error types
-     } else {
-       console.error("Unknown error:", error);
-     }
-   }
-   ```
-
-4. **Batch Processing**: For multiple operations, consider using batching techniques:
-
-   ```typescript
-   const transactions = await Promise.all([
-     sdk.getBuyInstructions(/* ... */),
-     sdk.getSellInstructions(/* ... */),
-     // More instructions...
-   ]);
-
-   const batchedTx = await sdk.createBatchedTransaction(transactions);
-   const result = await sdk.sendAndConfirmTransaction(batchedTx);
-   ```
-
-## Features
-
-### Custom Event Handling
-
-Utilize the SDK's event system for real-time updates:
+This example demonstrates creating a new token and executing initial buy orders, including optional Jito integration:
 
 ```typescript
-sdk.addEventListener("tradeEvent", (event, slot, signature) => {
-  console.log(`Trade event: ${event.isBuy ? "Buy" : "Sell"} of ${event.tokenAmount} tokens`,
-              `for ${event.solAmount} SOL at slot ${slot}`);
-});
-```
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK, CreateTokenMetadata } from "pumpfundler-sdk";
 
-### Bonding Curve Calculations
+async function createTokenWithInitialBuyers(sdk: PumpFundlerSDK) {
+  // Generate keypairs for demonstration (use secure key management in production)
+  const creator = Keypair.generate();
+  const mint = Keypair.generate();
+  const buyers = [
+    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
+    "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef",
+    "4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef",
+    "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
+  ];
+  
+  // Prepare token metadata
+  const metadata: CreateTokenMetadata = {
+    name: "PumpFundler Token",
+    symbol: "PFDLR",
+    description: "A sample token using PumpFundler SDK",
+    file: new Blob(["dummy image data"]),
+    twitter: "https://twitter.com/pumpfundler",
+    telegram: "https://t.me/pumpfundler",
+    website: "https://pump.fun"
+  };
 
-Leverage the `BondingCurveAccount` for price calculations:
+  // Set up transaction parameters
+  const buyAmountSol = BigInt(5 * LAMPORTS_PER_SOL); // 5 SOL total initial buy
+  const slippageBasisPoints = 300n; // 3% slippage tolerance
+  const priorityFees = { unitLimit: 1_000_000, unitPrice: 1 }; // Optional priority fees
 
-```typescript
-const bondingCurve = await sdk.getBondingCurveAccount(mintPublicKey);
-if (bondingCurve) {
-  const buyPrice = bondingCurve.getBuyPrice(BigInt(1000000)); // Price for 1 token
-  const marketCap = bondingCurve.getMarketCapSOL();
-  console.log(`Buy price: ${buyPrice}, Market Cap: ${marketCap}`);
+  // Optional Jito integration
+  const jitoAuthKeypair = "your_base58_encoded_jito_auth_keypair"; // Optional
+  const jitoFee = 10000; // Optional, in lamports
+
+  try {
+    const result = await sdk.createAndBuy(
+      creator,
+      mint,
+      buyers,
+      metadata,
+      buyAmountSol,
+      slippageBasisPoints,
+      priorityFees,
+      "confirmed", // commitment
+      "finalized", // finality
+      jitoAuthKeypair, // Optional: Remove if not using Jito
+      jitoFee // Optional: Remove if not using Jito
+    );
+
+    console.log("Token creation and initial buy result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error creating token with initial buyers:", error);
+    throw error;
+  }
 }
 ```
 
-## Security Considerations
+### 2. Advanced Buying Operation
 
-1. **Key Management**: Never hardcode private keys. Use secure key management solutions.
-2. **Environment Variables**: Use environment variables for sensitive configuration:
+This example shows an advanced buying operation with full parameter usage:
+
+```typescript
+import { Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function advancedBuyOperation(sdk: PumpFundlerSDK, mintAddress: string) {
+  const buyer = Keypair.generate(); // Use proper key management in production
+  const mint = new PublicKey(mintAddress);
+  const buyAmountSol = BigInt(2 * LAMPORTS_PER_SOL); // 2 SOL
+  const slippageBasisPoints = 500n; // 5% slippage tolerance
+  const priorityFees = { unitLimit: 1_200_000, unitPrice: 2 };
+
+  // Optional Jito parameters
+  const jitoAuthKeypair = "your_base58_encoded_jito_auth_keypair"; // Optional
+  const jitoFee = 15000; // Optional, in lamports
+
+  try {
+    const result = await sdk.buy(
+      buyer,
+      mint,
+      buyAmountSol,
+      slippageBasisPoints,
+      priorityFees,
+      "confirmed", // commitment
+      "finalized", // finality
+      jitoAuthKeypair, // Optional: Remove if not using Jito
+      jitoFee // Optional: Remove if not using Jito
+    );
+
+    console.log("Advanced buy operation result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error in advanced buy operation:", error);
+    throw error;
+  }
+}
+```
+
+### 3. Complex Selling Scenario
+
+This example demonstrates a complex selling scenario with bonding curve interaction:
+
+```typescript
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK } from "pumpfundler-sdk";
+
+async function complexSellScenario(sdk: PumpFundlerSDK, mintAddress: string) {
+  const seller = Keypair.generate(); // Use proper key management in production
+  const mint = new PublicKey(mintAddress);
+
+  try {
+    // Fetch bonding curve account to determine optimal sell amount
+    const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+    if (!bondingCurveAccount) {
+      throw new Error("Bonding curve account not found");
+    }
+
+    // Calculate optimal sell amount based on current market conditions
+    const currentMarketCap = bondingCurveAccount.getMarketCapSOL();
+    const optimalSellAmount = currentMarketCap / BigInt(100); // Example: Sell 1% of market cap
+
+    const slippageBasisPoints = 700n; // 7% slippage tolerance for larger sale
+    const priorityFees = { unitLimit: 1_500_000, unitPrice: 3 };
+
+    // Optional Jito parameters
+    const jitoAuthKeypair = "your_base58_encoded_jito_auth_keypair"; // Optional
+    const jitoFee = 20000; // Optional, in lamports
+
+    const result = await sdk.sell(
+      seller,
+      mint,
+      optimalSellAmount,
+      slippageBasisPoints,
+      priorityFees,
+      "confirmed", // commitment
+      "finalized", // finality
+      jitoAuthKeypair, // Optional: Remove if not using Jito
+      jitoFee // Optional: Remove if not using Jito
+    );
+
+    console.log("Complex sell scenario result:", result);
+    return result;
+  } catch (error) {
+    console.error("Error in complex sell scenario:", error);
+    throw error;
+  }
+}
+```
+
+### 4. Advanced Event Handling
+
+This example showcases advanced event handling with multiple event types:
+
+```typescript
+import { PumpFundlerSDK, PumpFunEventType } from "pumpfundler-sdk";
+
+function setupAdvancedEventHandling(sdk: PumpFundlerSDK) {
+  const eventTypes: PumpFunEventType[] = ["createEvent", "tradeEvent", "completeEvent", "setParamsEvent"];
+  const eventListeners: number[] = [];
+
+  eventTypes.forEach(eventType => {
+    const listenerId = sdk.addEventListener(eventType, (event, slot, signature) => {
+      console.log(`Event Type: ${eventType}`);
+      console.log(`Slot: ${slot}`);
+      console.log(`Signature: ${signature}`);
+      console.log("Event Data:", event);
+
+      // Implement specific logic based on event type
+      switch (eventType) {
+        case "createEvent":
+          // Handle token creation event
+          break;
+        case "tradeEvent":
+          // Handle trade event, potentially updating UI or triggering notifications
+          break;
+        case "completeEvent":
+          // Handle completion event, possibly finalizing processes
+          break;
+        case "setParamsEvent":
+          // Handle parameter changes, maybe updating local state
+          break;
+      }
+    });
+    eventListeners.push(listenerId);
+  });
+
+  // Return a function to remove all event listeners
+  return () => {
+    eventListeners.forEach(id => sdk.removeEventListener(id));
+  };
+}
+```
+
+### 5. Comprehensive Bonding Curve Analysis
+
+This example provides a comprehensive analysis of a token's bonding curve:
+
+```typescript
+import { PublicKey } from "@solana/web3.js";
+import { PumpFundlerSDK, BondingCurveAccount, GlobalAccount } from "pumpfundler-sdk";
+
+async function analyzeBondingCurve(sdk: PumpFundlerSDK, mintAddress: string) {
+  const mint = new PublicKey(mintAddress);
+
+  try {
+    const bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+    if (!bondingCurveAccount) {
+      throw new Error("Bonding curve account not found");
+    }
+
+    const globalAccount = await sdk.getGlobalAccount();
+
+    console.log("Bonding Curve Analysis:");
+    console.log("------------------------");
+    console.log(`Virtual Token Reserves: ${bondingCurveAccount.virtualTokenReserves}`);
+    console.log(`Virtual SOL Reserves: ${bondingCurveAccount.virtualSolReserves}`);
+    console.log(`Real Token Reserves: ${bondingCurveAccount.realTokenReserves}`);
+    console.log(`Real SOL Reserves: ${bondingCurveAccount.realSolReserves}`);
+    console.log(`Token Total Supply: ${bondingCurveAccount.tokenTotalSupply}`);
+    console.log(`Is Complete: ${bondingCurveAccount.complete}`);
+
+    const marketCapSOL = bondingCurveAccount.getMarketCapSOL();
+    console.log(`Current Market Cap (SOL): ${marketCapSOL}`);
+
+    const buyPrice1Token = bondingCurveAccount.getBuyPrice(BigInt(1_000_000)); // Assuming 6 decimals
+    console.log(`Buy Price for 1 Token: ${buyPrice1Token} lamports`);
+
+    const sellPrice1Token = bondingCurveAccount.getSellPrice(BigInt(1_000_000), globalAccount.feeBasisPoints);
+    console.log(`Sell Price for 1 Token: ${sellPrice1Token} lamports`);
+
+    const finalMarketCap = bondingCurveAccount.getFinalMarketCapSOL(globalAccount.feeBasisPoints);
+    console.log(`Estimated Final Market Cap (SOL): ${finalMarketCap}`);
+
+    return {
+      bondingCurveAccount,
+      globalAccount,
+      marketCapSOL,
+      buyPrice1Token,
+      sellPrice1Token,
+      finalMarketCap
+    };
+  } catch (error) {
+    console.error("Error analyzing bonding curve:", error);
+    throw error;
+  }
+}
+```
+
+## Advanced Configuration Considerations
+
+### Optimizing RPC Node Selection
+
+For high-performance applications, consider implementing a multi-node strategy:
+
+```typescript
+import { Connection, Keypair } from "@solana/web3.js";
+
+const rpcNodes = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-api.projectserum.com",
+  // Add more RPC nodes as needed
+];
+
+function getOptimalRpcNode(): string {
+  // Implement logic to select the best RPC node based on latency, uptime, etc.
+  return rpcNodes[Math.floor(Math.random() * rpcNodes.length)]; // Simple random selection for demonstration
+}
+
+const connection = new Connection(getOptimalRpcNode(), "confirmed");
+```
+
+### Dynamic Commitment Level Adjustment
+
+Implement a strategy to dynamically adjust commitment levels based on transaction importance:
+
+```typescript
+import { Commitment } from "@solana/web3.js";
+
+function getCommitmentLevel(transactionValue: number): Commitment {
+  if (transactionValue > 1000) return "finalized";
+  if (transactionValue > 100) return "confirmed";
+  return "processed";
+}
+
+// Usage in a buy transaction
+const buyAmountSol = BigInt(5 * LAMPORTS_PER_SOL);
+const commitmentLevel = getCommitmentLevel(Number(buyAmountSol));
+
+const result = await sdk.buy(
+  buyer,
+  mint,
+  buyAmountSol,
+  500n, // slippageBasisPoints
+  undefined, // priorityFees
+  commitmentLevel
+);
+```
+
+## Security Best Practices
+
+1. **Secure Key Management**: 
+   Implement a secure key management system, potentially using hardware security modules (HSMs) for critical operations.
+
+2. **Rate Limiting and Abuse Prevention**:
+   Implement rate limiting on your server to prevent API abuse:
 
    ```typescript
-   const config: PumpFundlerConfig = {
-     // ...
-     blockEngineUrl: process.env.JITO_BLOCK_ENGINE_URL,
-   };
+   import rateLimit from 'express-rate-limit';
+
+   const apiLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 minutes
+     max: 100 // limit each IP to 100 requests per windowMs
+   });
+
+   app.use('/api/', apiLimiter);
    ```
 
-3. **Rate Limiting**: Implement rate limiting to prevent abuse of your SDK integration.
-4. **Monitoring**: Set up monitoring and alerting for unusual activity or errors in your SDK usage.
+3. **Input Validation**:
+   Implement thorough input validation for all user-supplied data:
+
+   ```typescript
+   import { PublicKey } from "@solana/web3.js";
+
+   function validateMintAddress(mintAddress: string): boolean {
+     try {
+       new PublicKey(mintAddress);
+       return true;
+     } catch (error) {
+       console.error("Invalid mint address:", error);
+       return false;
+     }
+   }
+
+   // Usage
+   const mintAddress = "user_supplied_mint_address";
+   if (validateMintAddress(mintAddress)) {
+     // Proceed with operation
+   } else {
+     throw new Error("Invalid mint address provided");
+   }
+   ```
+
+4. **Error Handling and Logging**:
+   Implement comprehensive error handling and logging:
+
+   ```typescript
+   import { Logger } from "your-preferred-logging-library";
+
+   const logger = new Logger();
+
+   try {
+     const result = await sdk.buy(/* ... */);
+     logger.info("Buy transaction successful", { result });
+   } catch (error) {
+     logger.error("Buy transaction failed", { error, stack: error.stack });
+     // Handle error appropriately
+   }
+   ```
+
+## Performance Optimization
+
+1. **Batch Processing**:
+   For multiple operations, use batch processing to reduce network overhead:
+
+   ```typescript
+   async function batchBuyOperations(sdk: PumpFundlerSDK, buyers: Keypair[], mint: PublicKey, amounts: bigint[]) {
+     const transactions = await Promise.all(
+       buyers.map((buyer, index) => 
+         sdk.getBuyInstructionsBySolAmount(buyer.publicKey, mint, amounts[index])
+       )
+     );
+
+     // Combine transactions into a single batch
+     const batchedTx = await sdk.createBatchedTransaction(transactions);
+     return await sdk.sendAndConfirmTransaction(batchedTx);
+   }
+   ```
+
+2. **Caching**:
+   Implement caching for frequently accessed data:
+
+   ```typescript
+   import NodeCache from "node-cache";
+
+   const cache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
+
+   async function getCachedBondingCurveAccount(sdk: PumpFundlerSDK, mint: PublicKey) {
+     const cacheKey = `bonding_curve_${mint.toBase58()}`;
+     let bondingCurveAccount = cache.get(cacheKey);
+
+     if (!bondingCurveAccount) {
+       bondingCurveAccount = await sdk.getBondingCurveAccount(mint);
+       cache.set(cacheKey, bondingCurveAccount);
+     }
+
+     return bondingCurveAccount;
+   }
+   ```
 
 ## Next Steps
 
-Explore the following sections to dive deeper into the PumpFundler SDK:
+Now that you've configured the PumpFundler SDK and explored its core and advanced features, consider the following next steps:
 
 <CardGroup cols={2}>
   <Card title="Examples" icon="code" href="/examples">
-    Explore practical code samples and best practices for integration.
+    Explore more practical code samples and best practices for integrating PumpFundler SDK in various scenarios.
   </Card>
   <Card title="Fees" icon="ticket" href="/fees">
-    Understand the fee structure of the PumpFundler SDK.
+    Understand the detailed fee structure of the PumpFundler SDK and how it impacts your transactions.
   </Card>
 </CardGroup>

@@ -1,3 +1,4 @@
+
 import { type Layout, bool, struct, u64 } from "@coral-xyz/borsh";
 
 /**

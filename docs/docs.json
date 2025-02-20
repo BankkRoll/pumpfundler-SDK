@@ -33,16 +33,10 @@
           {
             "group": "Core Concepts",
             "pages": [
-              "core-concepts/bonding-curve-account",
+              "core-concepts/creation",
               "core-concepts/global-account",
+              "core-concepts/bonding-curve-account",
               "core-concepts/amm"
-            ]
-          },
-          {
-            "group": "Token Operations",
-            "pages": [
-              "token-operations/creation",
-              "token-operations/bonding-curves"
             ]
           },
           {

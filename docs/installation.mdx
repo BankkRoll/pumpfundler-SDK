@@ -1,18 +1,32 @@
 ---
 title: "Installation"
-description: "Learn how to install, set up, and use PumpFundler SDK in your Node.js and React projects"
+description: "Comprehensive guide for installing, setting up, and using PumpFundler SDK in Node.js and React projects"
 ---
 
-This guide will walk you through the process of installing PumpFundler SDK and setting up advanced examples in both Node.js and React environments.
+This guide provides an in-depth walkthrough for installing and configuring the PumpFundler SDK, including advanced features like Jito integration for MEV protection and multi-wallet transactions.
 
 ## Prerequisites
 
-Before you begin, make sure you have the following installed:
+Before you begin, ensure you have the following:
 
 <Check>Node.js (version 14 or later)</Check>
 <Check>npm (version 6 or later)</Check>
+<Check>Basic knowledge of Solana blockchain development</Check>
+<Check>Familiarity with TypeScript (recommended)</Check>
 
 ## Installation Steps
+
+<Card 
+  img="https://img.shields.io/npm/v/pumpfundler-sdk.svg?style=flat-square" 
+  href="https://www.npmjs.com/package/pumpfundler-sdk" 
+  icon="npm"
+  horizontal
+>
+    <img 
+      src="https://img.shields.io/npm/dm/pumpfundler-sdk.svg?style=flat-square" 
+      alt="npm downloads" 
+    />
+</Card>
 
 <Steps>
   <Step title="Create a new project directory">
@@ -21,34 +35,48 @@ Before you begin, make sure you have the following installed:
     cd pumpfundler-project
     ```
   </Step>
+
   <Step title="Initialize a new Node.js project">
     ```bash
     npm init -y
     ```
+    This command creates a `package.json` file with default values.
   </Step>
+
   <Step title="Install PumpFundler SDK and dependencies">
     ```bash
     npm install pumpfundler-sdk @solana/web3.js @coral-xyz/anchor
     ```
+    This installs the PumpFundler SDK along with its peer dependencies.
   </Step>
+
+  <Step title="Set up TypeScript (Optional but recommended)">
+    ```bash
+    npm install --save-dev typescript @types/node
+    npx tsc --init
+    ```
+    This installs TypeScript and initializes a `tsconfig.json` file.
+  </Step>
+
   <Step title="Configure your environment">
-    Set up your Solana connection and wallet using a local private key:
+    Create a new file named `setup.ts` (or `setup.js` if not using TypeScript) and add the following code:
+
     ```typescript
     import { Connection, Keypair } from "@solana/web3.js";
     import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+    import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
 
-    // Use your actual private key here
-    const privateKey = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    // SECURITY WARNING: Never expose private keys in production code
+    // Use environment variables or secure key management solutions
+    const privateKey = "YOUR_PRIVATE_KEY_HERE";
     const keypair = Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'));
 
     const connection = new Connection("https://api.mainnet-beta.solana.com");
     const wallet = new Wallet(keypair);
-    ```
-  </Step>
-  <Step title="Initialize the SDK">
-    Create a PumpFundlerSDK instance:
-    ```typescript
-    import { PumpFundlerSDK, PumpFundlerConfig } from "pumpfundler-sdk";
+
+    // Jito configuration for MEV protection
+    const jitoAuthKeypair = "YOUR_BASE58_ENCODED_JITO_AUTH_KEYPAIR";
+    const jitoFee = 10000; // in lamports, adjust as needed
 
     const config: PumpFundlerConfig = {
       connection,
@@ -61,23 +89,27 @@ Before you begin, make sure you have the following installed:
       commitment: "confirmed",
     });
 
-    const sdk = new PumpFundlerSDK(provider, config);
+    export const sdk = new PumpFundlerSDK(provider, config);
+    export { jitoAuthKeypair, jitoFee };
     ```
+    This setup file initializes the SDK with your Solana connection, wallet, and Jito configuration.
   </Step>
+
   <Step title="Create and Buy with Multiple Wallets">
-    Use createAndBuy with multiple local wallets:
+    Create a new file named `createAndBuy.ts` and add the following code:
+
     ```typescript
     import { Keypair, PublicKey } from "@solana/web3.js";
-    import { Wallet } from "@coral-xyz/anchor";
     import { CreateTokenMetadata } from "pumpfundler-sdk";
+    import { sdk, jitoAuthKeypair, jitoFee } from "./setup";
 
-    // Use your actual private keys here
+    // SECURITY WARNING: Never expose private keys in production code
     const localPrivateKeys = [
-      "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-      "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
-      "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef",
-      "4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef",
-      "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
+      "PRIVATE_KEY_1",
+      "PRIVATE_KEY_2",
+      "PRIVATE_KEY_3",
+      "PRIVATE_KEY_4",
+      "PRIVATE_KEY_5"
     ];
 
     const localWallets = localPrivateKeys.map(privateKey => 
@@ -85,10 +117,13 @@ Before you begin, make sure you have the following installed:
     );
 
     const metadata: CreateTokenMetadata = {
-      name: "My Token",
-      symbol: "MTK",
-      description: "A sample token",
+      name: "PumpFundler Token",
+      symbol: "PFDLR",
+      description: "A sample token using PumpFundler SDK",
       file: new Blob(["dummy image data"]),
+      twitter: "https://twitter.com/pumpfundler",
+      telegram: "https://t.me/pumpfundler",
+      website: "https://pump.fun"
     };
 
     async function createAndBuyWithLocalWallets() {
@@ -97,63 +132,169 @@ Before you begin, make sure you have the following installed:
       const buyers = localWallets.slice(1);
       const buyAmountSol = BigInt(1_000_000_000); // 1 SOL per buyer
 
-      const result = await sdk.createAndBuy(
-        creator,
-        mint,
-        buyers,
-        metadata,
-        buyAmountSol * BigInt(buyers.length),
-        300n, // 3% slippage
-        undefined, // No priority fees
-        "confirmed",
-        "finalized"
-      );
+      try {
+        const result = await sdk.createAndBuy(
+          creator,
+          mint,
+          buyers,
+          metadata,
+          buyAmountSol * BigInt(buyers.length),
+          300n, // 3% slippage
+          undefined, // No priority fees
+          "confirmed",
+          "finalized",
+          jitoAuthKeypair, // Optional: Remove if not using Jito
+          jitoFee // Optional: Remove if not using Jito
+        );
 
-      console.log("Create and buy result with local wallets:", result);
+        console.log("Create and buy result with local wallets:", result);
+        return result;
+      } catch (error) {
+        console.error("Error in createAndBuy:", error);
+        throw error;
+      }
     }
 
     createAndBuyWithLocalWallets().catch(console.error);
     ```
+    This script demonstrates how to create a new token and execute multiple buy transactions in a single operation.
+  </Step>
+
+  <Step title="Execute Buy and Sell Operations">
+    Create a new file named `buyAndSell.ts` and add the following code:
+
+    ```typescript
+    import { PublicKey } from "@solana/web3.js";
+    import { sdk, jitoAuthKeypair, jitoFee } from "./setup";
+
+    async function executeBuyAndSell() {
+      const buyer = sdk.provider.wallet;
+      const seller = sdk.provider.wallet; // Using the same wallet for demonstration
+      const mintPublicKey = new PublicKey("YOUR_TOKEN_MINT_ADDRESS");
+
+      try {
+        // Buy operation
+        const buyResult = await sdk.buy(
+          buyer,
+          mintPublicKey,
+          BigInt(500_000_000), // 0.5 SOL
+          500n, // 5% slippage
+          undefined, // No priority fees
+          "confirmed",
+          "finalized",
+          jitoAuthKeypair, // Optional: Remove if not using Jito
+          jitoFee // Optional: Remove if not using Jito
+        );
+        console.log("Buy result:", buyResult);
+
+        // Sell operation
+        const sellResult = await sdk.sell(
+          seller,
+          mintPublicKey,
+          BigInt(1_000_000), // Amount of tokens to sell
+          500n, // 5% slippage
+          undefined, // No priority fees
+          "confirmed",
+          "finalized",
+          jitoAuthKeypair, // Optional: Remove if not using Jito
+          jitoFee // Optional: Remove if not using Jito
+        );
+        console.log("Sell result:", sellResult);
+
+        return { buyResult, sellResult };
+      } catch (error) {
+        console.error("Error in buy/sell operations:", error);
+        throw error;
+      }
+    }
+
+    executeBuyAndSell().catch(console.error);
+    ```
+    This script shows how to perform individual buy and sell operations using the SDK.
+  </Step>
+
+  <Step title="Utilize Advanced Features">
+    Create a new file named `advancedFeatures.ts` and add the following code:
+
+    ```typescript
+    import { PublicKey } from "@solana/web3.js";
+    import { sdk } from "./setup";
+
+    async function demonstrateAdvancedFeatures() {
+      const mintPublicKey = new PublicKey("YOUR_TOKEN_MINT_ADDRESS");
+
+      try {
+        // Get bonding curve account
+        const bondingCurveAccount = await sdk.getBondingCurveAccount(mintPublicKey);
+        if (bondingCurveAccount) {
+          console.log("Bonding curve reserves:", bondingCurveAccount.reserves.toString());
+          console.log("Bonding curve supply:", bondingCurveAccount.supply.toString());
+        }
+
+        // Get global account
+        const globalAccount = await sdk.getGlobalAccount();
+        console.log("Initial virtual token reserves:", globalAccount.initialVirtualTokenReserves.toString());
+        console.log("Creation fee:", globalAccount.creationFee.toString());
+
+        // Add event listener
+        const listenerId = sdk.addEventListener("tradeEvent", (event, slot, signature) => {
+          console.log(`Trade event at slot ${slot}:`);
+          console.log(`  Type: ${event.isBuy ? "Buy" : "Sell"}`);
+          console.log(`  Token Amount: ${event.tokenAmount}`);
+          console.log(`  SOL Amount: ${event.solAmount}`);
+          console.log(`  Signature: ${signature}`);
+        });
+
+        // Simulate a trade to trigger the event listener
+        await sdk.buy(
+          sdk.provider.wallet,
+          mintPublicKey,
+          BigInt(100_000_000), // 0.1 SOL
+          500n, // 5% slippage
+        );
+
+        // Remember to remove the listener when no longer needed
+        // sdk.removeEventListener(listenerId);
+
+        return { bondingCurveAccount, globalAccount, listenerId };
+      } catch (error) {
+        console.error("Error in advanced features:", error);
+        throw error;
+      }
+    }
+
+    demonstrateAdvancedFeatures().catch(console.error);
+    ```
+    This script showcases advanced SDK features like retrieving bonding curve data, global account information, and setting up event listeners.
   </Step>
 </Steps>
 
-## Jito Integration (Optional)
-
-If you want to use Jito for MEV protection, you can add the following configuration:
-
-```typescript
-import { jitoWithAxios } from "pumpfundler-sdk";
-
-// Jito configuration
-const jitoConfig = {
-  jitoAuthKeypair: "your_base58_encoded_jito_auth_keypair",
-  jitoFee: 10000, // in lamports
-};
-
-// Example usage in a transaction
-const result = await jitoWithAxios([transaction], payer, {
-  ...config,
-  ...jitoConfig,
-});
-```
-
 <Warning>
-  Never expose your Jito authentication keypair in client-side code or public repositories. Use secure key management practices.
+  Never expose private keys or Jito authentication keypairs in client-side code or public repositories. Use secure key management practices and environment variables for sensitive information in production environments.
 </Warning>
+
+## Security Best Practices
+
+When using the PumpFundler SDK in production:
+
+1. Use environment variables to store sensitive information like private keys and API endpoints.
+2. Implement proper error handling and logging mechanisms.
+3. Regularly update the SDK and its dependencies to the latest stable versions.
+4. Use a secure RPC endpoint for your Solana connection, preferably a dedicated one for production use.
+5. Implement rate limiting and other protective measures to prevent abuse of your application.
 
 ## Next Steps
 
-Explore the following sections to dive deeper into the PumpFundler SDK:
+Now that you've set up the PumpFundler SDK and explored its core and advanced features, consider the following next steps:
 
 <CardGroup cols={2}>
   <Card title="Configuration" icon="gear" href="/configuration">
-    Learn how to set up and customize the PumpFundler SDK for your needs.
+    Learn how to fine-tune the PumpFundler SDK for optimal performance and security.
   </Card>
-  <Card title="Fees" icon="ticket" href="/fees">
-    Understand the fee structure of the PumpFundler SDK.
+  <Card title="Examples" icon="code" href="/examples">
+    Explore more practical code samples and best practices for integrating PumpFundler SDK in various scenarios.
   </Card>
 </CardGroup>
-
-  <Card title="Examples" icon="code" href="/examples">
-    Explore practical code samples and best practices for integration.
-  </Card>
+<Card title="Fees" icon="ticket" href="/fees">
+  Understand the detailed fee structure of the PumpFundler SDK and how it impacts your transactions.
+</Card>

@@ -21,16 +21,16 @@ PumpFundler SDK is a powerful TypeScript library designed for seamless interacti
 
 <CardGroup cols={2}>
   <Card title="Token Creation and Management" icon="coins">
-    Easily create, deploy, and manage tokens on the Solana blockchain.
+    Easily create, deploy, and manage tokens on the Solana blockchain using bonding curve mechanics.
   </Card>
   <Card title="Trading Operations" icon="chart-line">
-    Execute buy and sell orders with built-in slippage protection.
+    Execute buy and sell orders with built-in slippage protection and automated market making.
   </Card>
   <Card title="Transaction Bundling" icon="layer-group">
-    Efficiently bundle multiple transactions for atomic execution.
+    Efficiently bundle multiple transactions for atomic execution, optimizing gas usage and transaction speed.
   </Card>
   <Card title="MEV Protection" icon="shield-halved">
-    Integrate with Jito for enhanced MEV protection and efficient transaction processing.
+    Integrate with Jito for enhanced MEV protection and efficient transaction processing, ensuring fair trade execution.
   </Card>
 </CardGroup>
 
@@ -38,11 +38,29 @@ PumpFundler SDK is a powerful TypeScript library designed for seamless interacti
 
 The PumpFundler SDK consists of several core components:
 
-- **PumpFundlerSDK**: The main class for interacting with the PumpFun protocol.
-- **Token Operations**: Methods for creating, buying, and selling tokens.
-- **AMM (Automated Market Maker)**: Implements logic for token swaps and price calculations.
-- **Event Handling**: Subscribe to various protocol events.
-- **Jito Integration**: MEV protection and efficient transaction processing.
+- **PumpFundlerSDK**: The main class for interacting with the PumpFun protocol, handling token operations, trading, and configuration.
+- **BondingCurveAccount**: Manages the bonding curve mechanics for token pricing and reserves.
+- **AMM (Automated Market Maker)**: Implements sophisticated logic for token swaps and price calculations based on virtual and real reserves.
+- **GlobalAccount**: Manages global protocol settings and configurations.
+- **Event Handling**: Subscribe to various protocol events like token creation, trades, and parameter updates.
+- **Jito Integration**: Provides MEV protection and efficient transaction processing through Jito's block engine.
+
+## Advanced Features
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Pricing" icon="calculator">
+    Utilizes bonding curve mechanics for dynamic token pricing based on supply and demand.
+  </Card>
+  <Card title="Slippage Protection" icon="shield-check">
+    Built-in slippage calculation and protection for buy and sell operations.
+  </Card>
+  <Card title="Multi-Wallet Operations" icon="wallet">
+    Support for creating and buying tokens with multiple wallets in a single transaction.
+  </Card>
+  <Card title="Flexible Fee Structure" icon="money-bill-transfer">
+    Customizable fee structure with separate creation and transaction fees.
+  </Card>
+</CardGroup>
 
 ## Next Steps
 
@@ -50,15 +68,15 @@ Explore the following sections to dive deeper into the PumpFundler SDK:
 
 <CardGroup cols={2}>
   <Card title="Installation" icon="download" href="/installation">
-    Learn how to install the PumpFundler SDK in your project.
+    Learn how to install and set up the PumpFundler SDK in your project.
   </Card>
   <Card title="Configuration" icon="gear" href="/configuration">
-    Learn how to set up and customize the PumpFundler SDK for your needs.
-  </Card>
-  <Card title="Examples" icon="code" href="/examples">
-    Explore practical code samples and best practices for integration.
+    Discover how to configure and customize the PumpFundler SDK for your specific needs.
   </Card>
   <Card title="Fees" icon="ticket" href="/fees">
-    Understand the fee structure of the PumpFundler SDK.
+    Understand the detailed fee structure of the PumpFundler SDK.
+  </Card>
+  <Card title="Examples" icon="code" href="/examples">
+    Explore practical code samples and best practices for integrating the SDK.
   </Card>
 </CardGroup>

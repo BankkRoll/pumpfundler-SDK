@@ -2,6 +2,8 @@
 
 ## Table of Contents
 
+[View Docs](https://pumpfundler.mintlify.app/)
+
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Configuration](#configuration)

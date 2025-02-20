@@ -24,9 +24,17 @@ PumpFundler SDK implements two primary types of fees:
 
 When you create a new token using the PumpFundler SDK, a flat fee of 0.01 SOL is charged. This fee is applied regardless of the token's parameters.
 
+```typescript
+export const CREATION_FEE = BigInt(0.01 * LAMPORTS_PER_SOL);
+```
+
 ### Transaction Fee
 
 For each transaction (buy or sell) executed through the SDK, a fee of 1% of the transaction amount is charged. This fee is collected in the same token or SOL that is being transacted.
+
+```typescript
+export const TRANSACTION_FEE_PERCENT = 0.01;
+```
 
 ## Fee Calculation
 
@@ -37,6 +45,36 @@ The creation fee is a fixed amount of 0.01 SOL, which is equivalent to 10,000,00
 The transaction fee is calculated as 1% of the transaction amount. For example:
 - If you're buying 100 SOL worth of tokens, the fee would be 1 SOL.
 - If you're selling tokens worth 50 SOL, the fee would be 0.5 SOL.
+
+```typescript
+export const calculateTransactionFee = (
+  dataSize: bigint | undefined,
+): bigint => {
+  if (dataSize === undefined) {
+    return BigInt(0);
+  }
+  return BigInt(Math.floor(Number(dataSize) * TRANSACTION_FEE_PERCENT));
+};
+```
+
+## Fee Implementation
+
+Fees are implemented in the SDK as follows:
+
+1. **Creation Fee**: Applied in the `createAndBuy` method of the `PumpFundlerSDK` class.
+
+```typescript
+const creationFeeTx = createFeeInstruction(creator.publicKey, CREATION_FEE);
+const newTx = new Transaction().add(creationFeeTx).add(createTx);
+```
+
+2. **Transaction Fee**: Applied in the `buy` and `sell` methods.
+
+```typescript
+const fee = calculateTransactionFee(buyAmountSol);
+const buyAmountAfterFee = buyAmountSol - fee;
+const feeTx = createFeeInstruction(buyer.publicKey, fee);
+```
 
 ## Transparency and Updates
 
@@ -50,29 +88,122 @@ Here are some examples to illustrate how the fees are applied:
   <Accordion title="Creating a New Token">
     - Token Creation Fee: 0.01 SOL
     - Total Cost: 0.01 SOL
+
+    ```typescript
+    const createTx = await sdk.getCreateInstructions(/* ... */);
+    const creationFeeTx = createFeeInstruction(creator.publicKey, CREATION_FEE);
+    const newTx = new Transaction().add(creationFeeTx).add(createTx);
+    ```
+  </Accordion>
+  <Accordion title="Creating and Buying with Multiple Wallets">
+    - Token Creation Fee: 0.01 SOL (paid by the creator)
+    - Transaction Fee: 0 SOL (no transaction fee for initial buys in createAndBuy)
+    - Total Cost: 0.01 SOL (regardless of the number of buyers)
+
+    ```typescript
+    const creator = localWallets[0];
+    const mint = Keypair.generate();
+    const buyers = localWallets.slice(1);
+    const buyAmountSol = BigInt(1_000_000_000); // 1 SOL per buyer
+
+    const result = await sdk.createAndBuy(
+      creator,
+      mint,
+      buyers,
+      metadata,
+      buyAmountSol * BigInt(buyers.length),
+      300n, // 3% slippage
+      undefined, // No priority fees
+      "confirmed",
+      "finalized"
+    );
+    // Only the creation fee of 0.01 SOL is charged here
+    ```
   </Accordion>
   <Accordion title="Buying Tokens">
     - Transaction Amount: 100 SOL
     - Transaction Fee: 1 SOL (1% of 100 SOL)
     - Total Cost: 101 SOL
+
+    ```typescript
+    const buyAmountSol = BigInt(100 * LAMPORTS_PER_SOL);
+    const fee = calculateTransactionFee(buyAmountSol);
+    const buyAmountAfterFee = buyAmountSol - fee;
+    const buyTx = await sdk.getBuyInstructionsBySolAmount(/* ... */);
+    const feeTx = createFeeInstruction(buyer.publicKey, fee);
+    const combinedTx = new Transaction().add(feeTx).add(buyTx);
+    ```
   </Accordion>
   <Accordion title="Selling Tokens">
     - Transaction Amount: 50 SOL worth of tokens
     - Transaction Fee: 0.5 SOL (1% of 50 SOL)
     - Net Received: 49.5 SOL
+
+    ```typescript
+    const sellTx = await sdk.getSellInstructionsByTokenAmount(/* ... */);
+    // Fee is calculated and deducted after the sell transaction is confirmed
+    if (sellResults.success && sellResults.results?.meta) {
+      const soldAmount = postBalance - preBalance;
+      if (soldAmount > 0) {
+        const fee = calculateTransactionFee(BigInt(soldAmount));
+        const feeTx = createFeeInstruction(seller.publicKey, fee);
+        await sendTx(/* ... */);
+      }
+    }
+    ```
   </Accordion>
 </AccordionGroup>
+
+## Advanced Fee Considerations
+
+### Slippage and Fees
+
+When setting slippage tolerance for buy and sell operations, consider the impact of fees:
+
+```typescript
+const slippageBasisPoints = 500n; // 5% slippage tolerance
+const buyAmountWithSlippage = calculateWithSlippageBuy(buyAmountSol, slippageBasisPoints);
+const sellAmountWithSlippage = calculateWithSlippageSell(minSolOutput, slippageBasisPoints);
+```
+
+### Jito Fees
+
+When using Jito for MEV protection, additional fees apply:
+
+```typescript
+const jitoConfig = {
+  jitoAuthKeypair: "your_base58_encoded_jito_auth_keypair",
+  jitoFee: 10000, // in lamports
+};
+```
+
+These fees are separate from the PumpFundler SDK fees and are paid to Jito for their services.
 
 ## FAQ
 
 <AccordionGroup>
   <Accordion title="Why is there a creation fee?">
-    The creation fee supports the development of the SDK.
+    The creation fee supports the development and maintenance of the SDK and the PumpFun protocol infrastructure.
   </Accordion>
   <Accordion title="Is the transaction fee the same for buying and selling?">
     Yes, the transaction fee is consistently 1% of the transaction amount, whether you're buying or selling tokens.
   </Accordion>
   <Accordion title="Are there any additional network fees?">
-    The fees mentioned here are specific to the PumpFundler SDK. Solana network fees (which are typically very low) and optionally Jito tip fees will also apply to transactions.
+    The fees mentioned here are specific to the PumpFundler SDK. Solana network fees (which are typically very low) will also apply to transactions. If you're using Jito integration, additional Jito fees will apply.
+  </Accordion>
+  <Accordion title="How are fees handled in the createAndBuy function?">
+    In the `createAndBuy` function, only the creation fee of 0.01 SOL is charged, regardless of the number of buyers or the amount of tokens purchased. This fee is paid by the creator. The initial buys executed as part of `createAndBuy` do not incur the usual 1% transaction fee. Subsequent buy and sell operations will be subject to the standard 1% transaction fee.
+  </Accordion>
+  <Accordion title="How are fees handled in other multi-wallet operations?">
+    For operations other than `createAndBuy`, such as multiple separate `buy` transactions, each transaction would incur its own 1% fee. The creation fee is only charged once per token creation.
   </Accordion>
 </AccordionGroup>
+
+## Best Practices
+
+1. **Fee Estimation**: Always estimate fees before executing transactions to ensure sufficient balance.
+2. **User Communication**: Clearly communicate fee structures to your users, especially in UI implementations.
+3. **Fee Optimization**: For large operations, consider batching transactions to optimize fee costs.
+4. **Monitoring**: Regularly monitor fee expenditures to optimize your application's cost structure.
+
+By understanding and properly implementing the fee structure, you can ensure smooth operations and transparent pricing for your users when integrating the PumpFundler SDK.

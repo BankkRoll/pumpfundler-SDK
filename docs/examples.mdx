@@ -60,13 +60,13 @@ async function createAndBuyToken(sdk: PumpFundlerSDK) {
   ];
 
   const metadata: CreateTokenMetadata = {
-    name: "Example Token",
-    symbol: "EXT",
-    description: "An example token created with PumpFundler SDK",
-    file: new Blob(["Example token image data"]),
-    twitter: "https://twitter.com/exampletoken",
-    telegram: "https://t.me/exampletoken",
-    website: "https://www.exampletoken.com",
+    name: "PumpFundler Token",
+    symbol: "PFDLR",
+    description: "A sample token using PumpFundler SDK",
+    file: new Blob(["dummy image data"]),
+    twitter: "https://twitter.com/pumpfundler",
+    telegram: "https://t.me/pumpfundler",
+    website: "https://pump.fun"
   };
 
   const buyAmountSol = BigInt(5_000_000_000); // 5 SOL total
@@ -102,6 +102,7 @@ async function createAndBuyToken(sdk: PumpFundlerSDK) {
 // Usage
 createAndBuyToken(sdk).catch(console.error);
 ```
+
 
 ## Buying Tokens
 
@@ -349,6 +350,88 @@ robustBuyOperation(sdk, buyer, mintPublicKey, buyAmount)
   .catch(console.error);
 ```
 
+## Advanced Integrations
+
+### 1. Integrating with External Price Oracles
+
+Enhance your application by integrating with external price oracles for more accurate token valuations:
+
+```typescript
+import { PythConnection, getPythProgramKeyForCluster } from "@pythnetwork/client";
+import { Connection, PublicKey } from "@solana/web3.js";
+
+async function getExternalPriceData(connection: Connection, productAddress: string) {
+  const pythProgramKey = getPythProgramKeyForCluster("mainnet-beta");
+  const pythConnection = new PythConnection(connection, pythProgramKey);
+  await pythConnection.onPriceChange(new PublicKey(productAddress), (productPrice) => {
+    console.log(`${productPrice.productAccount.product.symbol}: $${productPrice.price}`);
+  });
+}
+
+// Usage
+const solUsdProductAddress = "H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG";
+getExternalPriceData(connection, solUsdProductAddress);
+```
+
+### 2. Implementing a Trading Bot
+
+Create a simple trading bot that uses the PumpFundlerSDK:
+
+```typescript
+import { PumpFundlerSDK, BondingCurveAccount } from "pumpfundler-sdk";
+import { PublicKey, Keypair } from "@solana/web3.js";
+
+class TradingBot {
+  constructor(private sdk: PumpFundlerSDK, private mint: PublicKey, private trader: Keypair) {}
+
+  async monitorAndTrade() {
+    let lastPrice: bigint | null = null;
+
+    setInterval(async () => {
+      try {
+        const bondingCurve = await this.sdk.getBondingCurveAccount(this.mint);
+        if (!bondingCurve) throw new Error("Bonding curve not found");
+
+        const currentPrice = bondingCurve.getBuyPrice(BigInt(1_000_000)); // Price for 1 token
+
+        if (lastPrice === null) {
+          lastPrice = currentPrice;
+          return;
+        }
+
+        const priceChange = (Number(currentPrice) - Number(lastPrice)) / Number(lastPrice);
+
+        if (priceChange > 0.05) { // 5% price increase
+          await this.executeSell(bondingCurve);
+        } else if (priceChange < -0.05) { // 5% price decrease
+          await this.executeBuy(bondingCurve);
+        }
+
+        lastPrice = currentPrice;
+      } catch (error) {
+        console.error("Error in trading bot:", error);
+      }
+    }, 60000); // Check every minute
+  }
+
+  private async executeBuy(bondingCurve: BondingCurveAccount) {
+    const buyAmount = bondingCurve.getMarketCapSOL() / BigInt(1000); // Buy 0.1% of market cap
+    await this.sdk.buy(this.trader, this.mint, buyAmount);
+    console.log(`Executed buy of ${buyAmount} lamports`);
+  }
+
+  private async executeSell(bondingCurve: BondingCurveAccount) {
+    const sellAmount = bondingCurve.realTokenReserves / BigInt(1000); // Sell 0.1% of real token reserves
+    await this.sdk.sell(this.trader, this.mint, sellAmount);
+    console.log(`Executed sell of ${sellAmount} tokens`);
+  }
+}
+
+// Usage
+const tradingBot = new TradingBot(sdk, new PublicKey("your_token_mint"), traderKeypair);
+tradingBot.monitorAndTrade();
+```
+
 ## Full Node.js Example
 
 Here's a complete Node.js example that demonstrates how to use the PumpFundler SDK:
@@ -386,13 +469,13 @@ async function main() {
   const mint = Keypair.generate();
   
   const metadata: CreateTokenMetadata = {
-    name: "Example Token",
-    symbol: "EXT",
-    description: "An example token created with PumpFundler SDK",
-    file: new Blob(["Example token image data"]),
-    twitter: "https://twitter.com/exampletoken",
-    telegram: "https://t.me/exampletoken",
-    website: "https://www.exampletoken.com",
+    name: "PumpFundler Token",
+    symbol: "PFDLR",
+    description: "A sample token using PumpFundler SDK",
+    file: new Blob(["dummy image data"]),
+    twitter: "https://twitter.com/pumpfundler",
+    telegram: "https://t.me/pumpfundler",
+    website: "https://pump.fun"
   };
 
   const buyAmountSol = BigInt(5_000_000_000); // 5 SOL total
@@ -489,10 +572,13 @@ const CreateAndBuyWithLocalWallets: React.FC = () => {
       );
 
       const metadata: CreateTokenMetadata = {
-        name: "My Token",
-        symbol: "MTK",
-        description: "A sample token",
+        name: "PumpFundler Token",
+        symbol: "PFDLR",
+        description: "A sample token using PumpFundler SDK",
         file: new Blob(["dummy image data"]),
+        twitter: "https://twitter.com/pumpfundler",
+        telegram: "https://t.me/pumpfundler",
+        website: "https://pump.fun"
       };
 
       const creator = localWallets[0];
@@ -547,3 +633,4 @@ This React component demonstrates how to integrate the PumpFundler SDK into a we
     Understand the fee structure of the PumpFundler SDK.
   </Card>
 </CardGroup>
+

@@ -56,8 +56,8 @@ import { jitoWithAxios } from "./jitoWithAxios";
  * including methods for creating tokens, buying, selling, and managing various aspects of the protocol.
  */
 
-const PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
-const MPL_TOKEN_METADATA_PROGRAM_ID =
+export const PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+export const MPL_TOKEN_METADATA_PROGRAM_ID =
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
 export const GLOBAL_ACCOUNT_SEED = "global";
@@ -71,7 +71,7 @@ export const DEFAULT_DECIMALS = 6;
  * Configuration interface for PumpFundlerSDK
  * @interface PumpFundlerConfig
  */
-interface PumpFundlerConfig {
+export interface PumpFundlerConfig {
   connection: Connection;
   commitmentLevel: Commitment;
   blockEngineUrl: string;

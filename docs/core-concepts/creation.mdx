@@ -1,0 +1,240 @@
+---
+title: "Creation"
+description: "Comprehensive guide on creating tokens and executing bundled buy transactions with multiple buyers using the PumpFundler SDK"
+---
+
+This guide demonstrates how to create a new token and execute bundled buy transactions with multiple buyers using the PumpFundler SDK. We'll focus on the advanced `createAndBuy` method, which allows for efficient token creation and immediate buying in a bundled transaction.
+
+## Prerequisites
+
+Before proceeding, ensure you have:
+
+1. Installed the PumpFundler SDK
+2. A funded Solana wallet
+3. Necessary permissions for token creation and buying
+
+## Setting Up the SDK
+
+First, let's set up the SDK with the correct configuration:
+
+```typescript
+import { PumpFundlerSDK, PumpFundlerConfig, CreateTokenMetadata } from "pumpfundler-sdk";
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+
+// Initialize connection and wallet
+const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+const wallet = new Wallet(Keypair.generate());
+
+// Configure SDK
+const config: PumpFundlerConfig = {
+  connection,
+  commitmentLevel: "confirmed",
+  blockEngineUrl: "https://your-jito-block-engine-url.com", // Optional: Remove if not using Jito
+};
+
+const provider = new AnchorProvider(connection, wallet, {});
+const sdk = new PumpFundlerSDK(provider, config);
+```
+
+## Preparing for Token Creation and Buying
+
+Now, let's prepare the necessary components for creating a token and executing buy transactions:
+
+```typescript
+// Generate keypairs for token creator and mint
+  const privateKey = "YOUR_PRIVATE_KEY_HERE";
+  const keypair = Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'));
+  const creator = new Wallet(keypair);
+
+  const mint = Keypair.generate();
+
+// Prepare token metadata
+const metadata: CreateTokenMetadata = {
+  name: "PumpFundler Token",
+  symbol: "PFDLR",
+  description: "A sample token using PumpFundler SDK",
+  file: new Blob(["dummy image data"]),
+  twitter: "https://twitter.com/pumpfundler",
+  telegram: "https://t.me/pumpfundler",
+  website: "https://pump.fun"
+};
+
+// SECURITY WARNING: Never expose private keys in production code
+const localPrivateKeys = [
+  "PRIVATE_KEY_1",
+  "PRIVATE_KEY_2",
+  "PRIVATE_KEY_3",
+  "PRIVATE_KEY_4",
+  "PRIVATE_KEY_5"
+]
+const buyers = localPrivateKeys.map(privateKey => 
+  Keypair.fromSecretKey(Buffer.from(privateKey, 'hex'))
+);
+
+// Set up buy parameters
+const buyAmountSol = BigInt(1_000_000_000); // 1 SOL
+const slippageBasisPoints = 300n; // 3% slippage tolerance
+
+// Optional Jito parameters
+const jitoAuthKeypair = "your-jito-auth-keypair-base58-encoded"; // Optional: Remove if not using Jito
+const jitoFee = 1000000; // 0.001 SOL, Optional: Remove if not using Jito
+```
+
+## Executing createAndBuy
+
+Now, let's use the `createAndBuy` method to create the token and execute buy transactions for multiple buyers:
+
+```typescript
+async function createTokenAndExecuteBundledBuys() {
+  try {
+    const result = await sdk.createAndBuy(
+      creator,
+      mint,
+      buyers,
+      createTokenMetadata,
+      buyAmountSol,
+      slippageBasisPoints,
+      undefined, // priority fees (optional)
+      "confirmed", // commitment
+      "finalized", // finality
+      jitoAuthKeypair, // optional: remove this and jitoFee to disable Jito
+      jitoFee // optional: remove this to disable Jito
+    );
+
+    if (result.confirmed) {
+      console.log("Token created and buy transactions executed successfully");
+      console.log("Jito transaction signature:", result.jitoTxsignature);
+    } else {
+      console.error("Failed to create token and execute buy transactions");
+    }
+  } catch (error) {
+    console.error("Error in createAndBuy process:", error);
+  }
+}
+
+createTokenAndExecuteBundledBuys();
+```
+
+## Understanding the Bundling Process
+
+The `createAndBuy` method internally handles the bundling of transactions:
+
+1. It creates a token creation transaction.
+2. It generates buy transactions for each buyer with slightly randomized amounts.
+3. All transactions are bundled and sent using Jito integration for MEV protection (if enabled).
+4. A retry mechanism ensures the bundle is confirmed.
+
+## Advanced Considerations
+
+### Transaction Size Limits
+
+Be aware of Solana's transaction size limits when bundling:
+
+```typescript
+const MAX_TRANSACTIONS_PER_BUNDLE = 20;
+// Implement logic to split transactions into multiple bundles if needed
+```
+
+### Error Handling for Individual Transactions
+
+Implement error handling for individual transactions within the bundle:
+
+```typescript
+async function handleIndividualTransactions(transactions: VersionedTransaction[]) {
+  for (let i = 0; i < transactions.length; i++) {
+    try {
+      await connection.simulateTransaction(transactions[i]);
+    } catch (error) {
+      console.error(`Error in transaction ${i}:`, error);
+      // Handle or log the error, but don't throw
+    }
+  }
+}
+```
+
+### Monitoring Bundle Progress
+
+Implement a monitoring system for bundled transactions:
+
+```typescript
+class BundleMonitor {
+  private totalTransactions: number;
+  private confirmedTransactions: number = 0;
+
+  constructor(totalTransactions: number) {
+    this.totalTransactions = totalTransactions;
+  }
+
+  updateProgress(confirmedTransactions: number) {
+    this.confirmedTransactions = confirmedTransactions;
+    const progress = (this.confirmedTransactions / this.totalTransactions) * 100;
+    console.log(`Bundle progress: ${progress.toFixed(2)}%`);
+  }
+}
+
+// Usage
+const monitor = new BundleMonitor(1 + buyers.length);
+// Update monitor in the confirmation loop
+```
+
+## Best Practices
+
+1. **Simulate Before Bundling**: 
+
+```typescript
+async function simulateAllTransactions(createTx: Transaction, buyTxs: Transaction[]) {
+  await connection.simulateTransaction(createTx);
+  for (const buyTx of buyTxs) {
+    await connection.simulateTransaction(buyTx);
+  }
+}
+```
+
+2. **Dynamic Fee Adjustment**:
+
+```typescript
+async function getOptimalJitoFee(connection: Connection): Promise<number> {
+  const recentPerformance = await connection.getRecentPerformanceSamples(10);
+  const avgTps = recentPerformance.reduce((sum, sample) => sum + sample.numTransactions, 0) / recentPerformance.length;
+  return Math.max(1000000, Math.floor(avgTps * 100)); // Minimum 0.001 SOL, scales with TPS
+}
+```
+
+3. **Graceful Degradation**:
+
+```typescript
+async function createAndBuyWithFallback(/* params */) {
+  try {
+    return await sdk.createAndBuy(/* params */);
+  } catch (error) {
+    console.warn("Bundled transaction failed, falling back to individual transactions");
+    const createResult = await sdk.createToken(/* params */);
+    const buyResults = await Promise.all(buyers.map(buyer => sdk.buy(/* params */)));
+    return { createResult, buyResults };
+  }
+}
+```
+
+4. **Event Emission for Bundle Steps**:
+
+```typescript
+class BundleStepEvent extends Event {
+  constructor(public step: string, public details: any) {
+    super('bundleStep');
+  }
+}
+
+// Usage
+dispatchEvent(new BundleStepEvent('tokenCreated', { mint: mint.publicKey.toBase58() }));
+dispatchEvent(new BundleStepEvent('buyExecuted', { buyer: buyer.publicKey.toBase58(), amount: buyAmount }));
+```
+
+## Conclusion
+
+This guide demonstrates advanced usage of the PumpFundler SDK for token creation and bundled buying. By leveraging the `createAndBuy` method and implementing best practices, you can efficiently create tokens and execute multiple buy transactions in a single operation. Remember to handle errors gracefully, monitor transaction progress, and consider network conditions for optimal performance.
+
+<Warning>
+  Always ensure you're using the latest version of the PumpFundler SDK and follow best security practices when handling private keys and sensitive information.
+</Warning>
+
